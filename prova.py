@@ -84,11 +84,11 @@ def readSpectrumFile():
 
       #no se puede utilizar match sino es python >3.10
 
-      if extensio == '.Z80' or extensio == '.z80' : # https://worldofspectrum.org/faq/reference/z80format.htm
+      if extensio.upper() == '.Z80': # https://worldofspectrum.org/faq/reference/z80format.htm
            data = f.read(30) # lee los registros del procesador
-      elif extensio == '.SNA' or extensio == '.sna': # https://worldofspectrum.org/faq/reference/formats.htm
+      elif extensio.upper() == '.SNA': # https://worldofspectrum.org/faq/reference/formats.htm
             data = f.read(27) # lee los registros del procesador
-      elif extensio == '.SP' or extensio == '.sp':
+      elif extensio.upper() == '.SP':
               data = f.read(6+32) # lee los registros del procesador
       
 
