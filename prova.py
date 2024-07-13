@@ -191,7 +191,7 @@ def worker():
       # t = time()
       ins,  args =  mach.step_instruction()
  #     print (ins.assembler(args))
-      sleep(0.00000001)
+      #sleep(0.00000001) eliminada la pausa per accelar l'execució
       # print (time() - t) / ins.tstates
             
       # mach._mem_view.update()
