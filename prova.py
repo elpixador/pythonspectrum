@@ -142,15 +142,15 @@ class Z80(io.Interruptable):
             self._interrupted = False
             if self.registers.IM == 1:
                 print ("!!! Interrupt  !!!")
-                ins, args = self.instructions << 0xCD
+             #   ins, args = self.instructions << 0xCD
                 ins, args = self.instructions << 0x38
-                ins, args = self.instructions << 0x00
+              #  ins, args = self.instructions << 0x00
                 self.registers.IFF = False
         else:        
             while not ins:
                 ins, args = self.instructions << self._memory[self.registers.PC]
                 self.registers.PC = util.inc16(self.registers.PC)
-            #print( "{0:X} : {1} ".format(pc, ins.assembler(args)))
+            print( "{0:X} : {1} ".format(pc, ins.assembler(args)))
         
         rd =  ins.get_read_list(args)
         data = [0] * len(rd)
