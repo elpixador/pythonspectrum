@@ -1,4 +1,9 @@
-import pygame, sys
+import pygame, sys, os
+from tkinter import *
+from tkinter import filedialog, messagebox
+
+root = Tk() 
+root.iconify() # per amagar la finestra 'root que obre el dialog box
 
 mem = bytearray(65536)
 
@@ -12,45 +17,7 @@ def readROM(aFilename):
       dir = dir + 1
       data = f.read(1)
    f.close()
-   print(di∫r)
-
-def readz80file(aFilename):
-   # https://worldofspectrum.org/faq/reference/z80format.htm
-   f = open(aFilename, mode="rb")
-   data = f.read(30)
-   dir = 16384
-   data = f.read(1)
-   while (data):
-      mem[dir] = int.from_bytes(data, byteorder='big', signed=False)
-      dir = dir + 1
-      data = f.read(1)
-   f.close()
-   print(dir)
-
-def readsnafile(aFilename):
-   # https://worldofspectrum.org/faq/reference/formats.htm
-   f = open(aFilename, mode="rb")
-   data = f.read(27)
-   dir = 16384
-   data = f.read(1)
-   while (data):
-      mem[dir] = int.from_bytes(data, byteorder='big', signed=False)
-      dir = dir + 1
-      data = f.read(1)
-   f.close()
-   print(dir)
-
-def readspfile(aFilename):
-   f = open(aFilename, mode="rb")
-   data = f.read(6+32)
-   dir = 16384
-   data = f.read(1)
-   while (data):
-      mem[dir] = int.from_bytes(data, byteorder='big', signed=False)
-      dir = dir + 1
-      data = f.read(1)
-   f.close()
-   print(dir)
+   print("ROM cargada")
 
 def decodecolor(atribut,special):
    # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour_palette
@@ -104,24 +71,54 @@ def renderscreen2(lienzo):
             renderline(lienzo, y+avall+terc, dir+offset)
             offset = offset + 32
 
+def readSpectrumFile():
 
-print("inici")
-readROM("spectrum.rom")
-#readz80file("jocs/Jet Set Willy (1984)(Software Projects).z80")
-#readsnafile("jocs/uridium.sna")
-#readspfile("jocs/GEOGRAP.SP")
-#readspfile("jocs/KNLORE.SP")
-readsnafile("Jetman.sna")
+   
+   fichero = filedialog.askopenfile(title='Obrir arxiu', filetypes=(('Arxius .SNA','*.SNA'), ('Arxius .SP','*.SP'), ('Arxius .Z80','*.Z80')))
+   
+   if (fichero):
+      print("el fichero es "+str(fichero.name))
+      nom, extensio = os.path.splitext(fichero.name)
+
+      f = open(fichero.name, mode="rb")
+
+      #no se puede utilizar match sino es python >3.10
+
+      if extensio == '.Z80' or extensio == '.z80' : # https://worldofspectrum.org/faq/reference/z80format.htm
+           data = f.read(30) # lee los registros del procesador
+      elif extensio == '.SNA' or extensio == '.sna': # https://worldofspectrum.org/faq/reference/formats.htm
+            data = f.read(27) # lee los registros del procesador
+      elif extensio == '.SP' or extensio == '.sp':
+              data = f.read(6+32) # lee los registros del procesador
+      
+
+      #carga el fichero restante a partir de la memoria de pantalla
+      dir = 16384
+      data = f.read(1)
+      while (data):
+         mem[dir] = int.from_bytes(data, byteorder='big', signed=False)
+         dir = dir + 1
+         data = f.read(1)
+      f.close()
+
+   else:
+      print ("cancelada carga / ejecutamos ROM")
+
+  
+
+
+#Inici
+readROM("spectrum.rom") #carreguem la rom sempre
+readSpectrumFile() #funció que càrrega qualsevol snapshoot de spectrum... en cas de no fer-ho arrenca la ROM per defecte
 
 pygame.init()
 screen = pygame.display.set_mode((256, 192), pygame.SCALED,  vsync=1)
-pygame.display.set_caption("Hello World")
+pygame.display.set_caption("Hello from Spectrum World")
 
 clock = pygame.time.Clock()
 clock.tick(50) 
 
 conta = 0
-copia = 0
 
 while True:
 
@@ -138,11 +135,9 @@ while True:
    for event in pygame.event.get():
 
       if event.type == pygame.QUIT:
-         pygame.quit()
-         sys.exit()
-    
-      
-
-      
-
- 
+         response=messagebox.askquestion("Sortida ","Voleu sortir del programa (Yes)? Càrregar un altre arxiu (No) Continuar (Cancel)",   icon='warning', type='yesnocancel')
+         if   response == "yes":
+            pygame.quit()
+            sys.exit()
+         if   response == "no":
+            readSpectrumFile()
