@@ -2,6 +2,18 @@ import pygame, sys
 
 mem = bytearray(65536)
 
+def readROM(aFilename):
+   
+   f = open(aFilename, mode="rb")
+   dir = 0
+   data = f.read(1)
+   while (data):
+      mem[dir] = int.from_bytes(data, byteorder='big', signed=False)
+      dir = dir + 1
+      data = f.read(1)
+   f.close()
+   print(di∫r)
+
 def readz80file(aFilename):
    # https://worldofspectrum.org/faq/reference/z80format.htm
    f = open(aFilename, mode="rb")
@@ -94,6 +106,7 @@ def renderscreen2(lienzo):
 
 
 print("inici")
+readROM("spectrum.rom")
 #readz80file("jocs/Jet Set Willy (1984)(Software Projects).z80")
 #readsnafile("jocs/uridium.sna")
 #readspfile("jocs/GEOGRAP.SP")
