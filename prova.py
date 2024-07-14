@@ -14,7 +14,17 @@ from z80 import util,  io, registers, instructions
 
 root = Tk() 
 root.iconify() # per amagar la finestra 'root que obre el dialog box
+
+# variables, estructures i coses
 mem = bytearray(65536)
+colorTable = ( # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour_palette
+   (0x000000, 0x0100CE, 0xCF0100, 0xCF01CE, 0x00CF15, 0x01CFCF, 0xCFCF15, 0xCFCFCF), # bright 0
+   (0x000000, 0x0200FD, 0xFF0201, 0xFF02FD, 0x00FF1C, 0x02FFFF, 0xFFFF1D, 0xFFFFFF)  # bright 1
+)
+flashReversed = False
+pantalla = None
+tilechanged = [True] * 768
+
 
 #tratamiento emulación Z80
 
@@ -68,58 +78,73 @@ def readSpectrumFile():
 
   
 #tratamiento video ULA
-def decodecolor(atribut,special):
-   # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour_palette
-   coloret = (
-      (0x000000, 0x0100CE, 0xCF0100, 0xCF01CE, 0x00CF15, 0x01CFCF, 0xCFCF15, 0xCFCFCF), # bright 0
-      (0x000000, 0x0200FD, 0xFF0201, 0xFF02FD, 0x00FF1C, 0x02FFFF, 0xFFFF1D, 0xFFFFFF)  # bright 1
-   )
+def decodecolor(atribut):
    # http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/screen-memory-layout
    bright = (atribut & 0b01000000)>>6
    flash = atribut & 0b10000000;
 
-   tinta = coloret[bright][atribut & 0b00000111]
-   paper = coloret[bright][(atribut & 0b00111000)>>3]
+   tinta = colorTable[bright][atribut & 0b00000111]
+   paper = colorTable[bright][(atribut & 0b00111000)>>3]
    
-   if (flash >>7 & special ):   
+   if (flash >>7 & flashReversed):   
       return (paper, tinta)
    else:
       return (tinta, paper)
 
-def renderline(lienzo, y, adr_pattern, special):
+def renderline(y, adr_pattern):
    adr_attributs = 22528 + ((y >> 3)*32)
    x = 0
    for col in range(32):      
-      ink, paper = decodecolor(mem[adr_attributs], special)
+      ink, paper = decodecolor(mem[adr_attributs])
       b = 0b10000000
       while (b>0):
          if ((mem[adr_pattern] & b) == 0):
-            lienzo.set_at((x, y), paper)
+            pantalla.set_at((x, y), paper)
          else:
-            lienzo.set_at((x, y), ink)
+            pantalla.set_at((x, y), ink)
          x = x + 1
          b = b >> 1
       adr_pattern = adr_pattern + 1
       adr_attributs = adr_attributs + 1
 
 
-def renderscreen1(lienzo, special):
+def renderscreen1():
    dir = 16384
    for y in range(192):
       # 000 tt zzz yyy xxxxx
       offset = ((y & 0b11000000) | ((y & 0b111) << 3) | (y & 0b111000) >> 3) << 5
-      renderline(lienzo, y, dir+offset, special)
+      renderline(y, dir+offset)
 
 '''
-def renderscreen2(lienzo):
+def renderscreen2():
    dir = 16384
    offset = 0
    for terc in range(0, 192, 64):
       for avall in range(8):
          for y in range(0, 64, 8):
-            renderline(lienzo, y+avall+terc, dir+offset)
+            renderline(y+avall+terc, dir+offset)
             offset = offset + 32
 '''
+
+def renderscreen3():
+   for p in range(0, 768):
+      if tilechanged[p] == True:
+         ink, paper = decodecolor(mem[22528+p])         
+         # 000 tt zzz yyy xxxxx
+         adr_pattern = 16384 + ((p & 0b0000001100000000) << 3) + (p & 0b11111111)
+         y = (p >> 5) * 8
+         for offset in range(0, 2048, 256):
+            x = (p & 0b00011111) * 8
+            b = 0b10000000
+            while (b>0):
+               if ((mem[adr_pattern + offset] & b) == 0):
+                  pantalla.set_at((x, y), paper)
+               else:
+                  pantalla.set_at((x, y), ink)
+               b >>= 1
+               x += 1
+            y += 1
+         tilechanged[p] = False
 
 
 class Z80(io.Interruptable):
@@ -169,18 +194,23 @@ class Z80(io.Interruptable):
                 ##self._iomap.address[address].write(address, i[1])
                 #print (chr(i[1]))
             else:
-               if i[0] > 16383:
-                  self._memory[i[0]] = i[1]
+               adr = i[0]
+               if (adr > 16383) & (self._memory[adr] != i[1]):
+                  self._memory[adr] = i[1]
+                  if adr < 22528:
+                     tilechanged[((adr & 0b0001100000000000) >> 3) | adr & 0b11111111] = True
+                  elif (adr < 23296):
+                     tilechanged[adr & 0b0000001111111111] = True
         
         return ins, args
 
 #Inici
 
-readROM("spectrum.rom") #carreguem la rom sempre
+readROM("jocs/spectrum.rom") #carreguem la rom sempre
 readSpectrumFile() #funció que càrrega qualsevol snapshoot de spectrum... en cas de no fer-ho arrenca la ROM per defecte
 
 pygame.init()
-screen = pygame.display.set_mode((256, 192), pygame.SCALED,  vsync=1)
+pantalla = pygame.display.set_mode((256, 192), pygame.SCALED,  vsync=1)
 pygame.display.set_caption("Hello from Spectrum World")
 
 mach = Z80()
@@ -222,10 +252,8 @@ while True:
   #print ('tick={}, fps={}'.format(clock.tick(60), clock.get_fps()))
    conta = conta +1
 
-   if (conta & 0b00100000):
-      renderscreen1(screen,0)      
-   else:
-      renderscreen1(screen,1)         
+   flashReversed = ((conta & 0b00100000) == 0)
+   renderscreen3()
 
    pygame.display.flip()
 
