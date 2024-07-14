@@ -81,12 +81,12 @@ def readSpectrumFile():
 def decodecolor(atribut):
    # http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/screen-memory-layout
    bright = (atribut & 0b01000000)>>6
-   flash = atribut & 0b10000000;
+   flash = (atribut & 0b10000000)>>7
 
    tinta = colorTable[bright][atribut & 0b00000111]
    paper = colorTable[bright][(atribut & 0b00111000)>>3]
    
-   if (flash >>7 & flashReversed):   
+   if (flash & flashReversed):
       return (paper, tinta)
    else:
       return (tinta, paper)
@@ -108,7 +108,7 @@ def renderline(y, adr_pattern):
       adr_attributs = adr_attributs + 1
 
 
-def renderscreen1():
+def renderscreenFull():
    dir = 16384
    for y in range(192):
       # 000 tt zzz yyy xxxxx
@@ -126,7 +126,7 @@ def renderscreen2():
             offset = offset + 32
 '''
 
-def renderscreen3():
+def renderscreenDiff():
    for p in range(0, 768):
       if tilechanged[p] == True:
          ink, paper = decodecolor(mem[22528+p])         
@@ -243,7 +243,7 @@ thread.start()
 
 
 clock = pygame.time.Clock()
-clock.tick(50) 
+clock.tick(50)
 
 conta = 0
 
@@ -252,9 +252,13 @@ while True:
   #print ('tick={}, fps={}'.format(clock.tick(60), clock.get_fps()))
    conta = conta +1
 
-   flashReversed = ((conta & 0b00100000) == 0)
-   renderscreen3()
+   if ((conta & 0b00001111) == 0):
+      flashReversed = not flashReversed
+      for p in range(0, 768):
+         if ((mem[22528+p] & 0b10000000) != 0):
+            tilechanged[p] = True
 
+   renderscreenDiff()
    pygame.display.flip()
 
    for event in pygame.event.get():
@@ -266,3 +270,4 @@ while True:
             sys.exit()
          if   response == "no":
             readSpectrumFile()
+            renderscreenFull()
