@@ -166,11 +166,16 @@ class Z80(io.Interruptable):
             self.registers.IFF = False
             self._interrupted = False
             if self.registers.IM == 1:
-                print ("!!! Interrupt  !!!")
-             #   ins, args = self.instructions << 0xCD
+                print ("!!! Interrupt Mode 1 !!!")
+                ins, args = self.instructions << 0xCD
                 ins, args = self.instructions << 0x38
-              #  ins, args = self.instructions << 0x00
-                self.registers.IFF = False
+                ins, args = self.instructions << 0x00
+            elif self.registers.IM == 2:
+                print ("!!! Interrupt Mode 2 !!!")
+                imadr = (self.registers.I << 8) | 0xFF
+                ins, args = self.instructions << 0xCD
+                ins, args = self.instructions << self._memory[imadr & 0xFFFF]
+                ins, args = self.instructions << self._memory[(imadr+1) & 0xFFFF]
         else:        
             while not ins:
                 ins, args = self.instructions << self._memory[self.registers.PC]
@@ -184,7 +189,8 @@ class Z80(io.Interruptable):
                 data[n] = self._memory[i]
             else:
                 address = i & 0xFF
-                data[n] = self._iomap.address[address].read(address)
+                #data[n] = self._iomap.address[address].read(address)
+                data[n] = 0x5f
         wrt = ins.execute(data, args)
         for i in wrt:
 
@@ -222,12 +228,11 @@ def worker():
    while True:
       # t = time()
       ins,  args =  mach.step_instruction()
-      """
       cicles -= ins.tstates
       if (cicles<0):
          cicles += 70908
          mach.interrupt()
-      """
+
  #     print (ins.assembler(args))
       #sleep(0.00000001) eliminada la pausa per accelar l'execució
       # print (time() - t) / ins.tstates
@@ -243,7 +248,7 @@ thread.start()
 
 
 clock = pygame.time.Clock()
-clock.tick(50)
+clock.tick(50) 
 
 conta = 0
 
