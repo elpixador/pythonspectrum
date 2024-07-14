@@ -46,7 +46,7 @@ def readROM(aFilename):
 def readSpectrumFile():
 
    
-   fichero = filedialog.askopenfile(title='Obrir arxiu', filetypes=(('Arxius .SNA','*.SNA'), ('Arxius .SP','*.SP'), ('Arxius .Z80','*.Z80')))
+   fichero = filedialog.askopenfile(title='Obrir arxiu', filetypes=(('Arxius .SNA','*.SNA'), ('Arxius .SP','*.SP'), ('Arxius .Z80','*.Z80'), ('Tots','*')))
    
    if (fichero):
       print("el fichero es "+str(fichero.name))
