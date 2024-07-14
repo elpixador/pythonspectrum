@@ -169,7 +169,8 @@ class Z80(io.Interruptable):
                 ##self._iomap.address[address].write(address, i[1])
                 #print (chr(i[1]))
             else:
-                self._memory[i[0]] = i[1]
+               if i[0] > 16383:
+                  self._memory[i[0]] = i[1]
         
         return ins, args
 
@@ -186,10 +187,17 @@ mach = Z80()
 
 def worker():
    t = time()
+   cicles = 70908
              
    while True:
       # t = time()
       ins,  args =  mach.step_instruction()
+      """
+      cicles -= ins.tstates
+      if (cicles<0):
+         cicles += 70908
+         mach.interrupt()
+      """
  #     print (ins.assembler(args))
       #sleep(0.00000001) eliminada la pausa per accelar l'execució
       # print (time() - t) / ins.tstates
