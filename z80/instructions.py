@@ -1573,7 +1573,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers[r] = shift_right(registers, registers[r]) & 0b01111111
+            registers[r] = shift_right_logical(registers, registers[r])
             set_f5_f3(registers, registers[r])
             return []
         
@@ -1583,7 +1583,7 @@ class InstructionSet():
         if get_reads:
             return [registers.HL]
         else:
-            val = shift_right(registers, data[0]) & 0b01111111
+            val = shift_right_logical(registers, data[0])
             set_f5_f3(registers, val)
             return [(registers.HL, val)]
         
@@ -1594,7 +1594,7 @@ class InstructionSet():
         if get_reads:
             return [registers[i] + get_8bit_twos_comp(d)]
         else:
-            val = shift_right(registers, data[0]) & 0b01111111
+            val = shift_right_logical(registers, data[0])
             set_f5_f3(registers, val)
             return [(registers[i] + get_8bit_twos_comp(d), val)]
 
