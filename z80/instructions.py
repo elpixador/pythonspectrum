@@ -1093,15 +1093,30 @@ class InstructionSet():
         else:
             if registers.condition.N == 0:
                 # add operation
-                if registers.condition.C ==  0:
-                    pass
-                else:
-                    pass
-                pass
+                if ((registers.condition.H != 0) | ((registers.A & 0x0F) > 9)):
+                    registers.A = (registers.A + 0x06) & 0xFF
+                    registers.condition.C = 0
+                    registers.condition.H = 1
+                if ((registers.condition.C != 0) | (((registers.A & 0xF0) >> 4) > 9)):
+                    registers.A = (registers.A + 0x60) & 0xFF
+                    registers.condition.C = 1
             else:
-                pass
+                # substract operation
+                if ((registers.condition.H != 0) | ((registers.A & 0x0F) > 9)):
+                    registers.A = (registers.A - 0x06) & 0xFF
+                    registers.condition.C = 0
+                    registers.condition.H = 1
+                if ((registers.condition.C != 0) | (((registers.A & 0xF0) >> 4) > 9)):
+                    registers.A = (registers.A - 0x60) & 0xFF
+                    registers.condition.C = 1
+
+            registers.condition.S = registers.A >> 7
+            registers.condition.Z = (registers.A == 0)
+            registers.condition.PV = parity(registers.A)
+
             # TODO: implement DAA
             #raise Exception("DAA Not implemented ")
+
             return []
 
     @instruction([(0x2F, ())], 0, "CPL", 4)
