@@ -236,6 +236,7 @@ class Z80(io.Interruptable):
         if self._interrupted and self.registers.IFF:
             self.registers.IFF = False
             self._interrupted = False
+            if (self.registers.HALT == 1): self.registers.HALT = 2 # 0=normal, 1=waiting, 2=interrupted
             if self.registers.IM == 1:
                 print ("!!! Interrupt Mode 1 !!!")
                 ins, args = self.instructions << 0xCD

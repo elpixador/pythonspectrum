@@ -1158,8 +1158,11 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers.HALT = True
-            registers.PC -= 1
+            if (registers.HALT < 2): # 0=normal, 1=waiting, 2=interrupted
+                registers.HALT = 1
+                registers.PC -= 1
+            else:
+                registers.HALT = 0
             return []
 
 
