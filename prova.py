@@ -43,6 +43,10 @@ def readROM(aFilename):
    print("ROM cargada")
 
 
+def byteFromFile(aFile):
+   data = aFile.read(1)
+   return int.from_bytes(data, byteorder='big', signed=False)   
+
 def readSpectrumFile():
 
    
@@ -58,11 +62,70 @@ def readSpectrumFile():
 
       if extensio.upper() == '.Z80': # https://worldofspectrum.org/faq/reference/z80format.htm
            data = f.read(30) # lee los registros del procesador
-      elif extensio.upper() == '.SNA': # https://worldofspectrum.org/faq/reference/formats.htm
-            data = f.read(27) # lee los registros del procesador
-      elif extensio.upper() == '.SP':
-              data = f.read(6+32) # lee los registros del procesador
-      
+      elif extensio.upper() == '.SNA': # https://worldofspectrum.org/faq/reference/formats.htm            
+            mach.registers.I = byteFromFile(f)
+            mach.registers.L_ = byteFromFile(f)
+            mach.registers.H_ = byteFromFile(f)
+            mach.registers.E_ = byteFromFile(f)
+            mach.registers.D_ = byteFromFile(f)
+            mach.registers.C_ = byteFromFile(f)
+            mach.registers.B_ = byteFromFile(f)
+            mach.registers.F_ = byteFromFile(f)
+            mach.registers.A_ = byteFromFile(f)
+            mach.registers.L = byteFromFile(f)
+            mach.registers.H = byteFromFile(f)
+            mach.registers.E = byteFromFile(f)
+            mach.registers.D = byteFromFile(f)
+            mach.registers.C = byteFromFile(f)
+            mach.registers.B = byteFromFile(f)
+            mach.registers.IY = byteFromFile(f) | (byteFromFile(f) << 8)
+            mach.registers.IX = byteFromFile(f) | (byteFromFile(f) << 8)
+            b = byteFromFile(f)
+            mach.registers.IFF = b & 1
+            mach.registers.IFF2 = (b >> 2) & 1
+            mach.registers.R = byteFromFile(f)
+            mach.registers.F = byteFromFile(f)
+            mach.registers.A = byteFromFile(f)
+            mach.registers.SP = byteFromFile(f) | (byteFromFile(f) << 8)
+            mach.registers.IM = byteFromFile(f) & 0x03
+            byteFromFile(f) # Bordercolor
+            
+      elif extensio.upper() == '.SP': # https://rk.nvg.ntnu.no/sinclair/faq/fileform.html#SP
+            f.read(6) # signatura i cacones
+            mach.registers.C = byteFromFile(f)
+            mach.registers.B = byteFromFile(f)
+            mach.registers.E = byteFromFile(f)
+            mach.registers.D = byteFromFile(f)
+            mach.registers.L = byteFromFile(f)
+            mach.registers.H = byteFromFile(f)
+            mach.registers.F = byteFromFile(f)
+            mach.registers.A = byteFromFile(f)
+            mach.registers.IX = byteFromFile(f) | (byteFromFile(f) << 8)
+            mach.registers.IY = byteFromFile(f) | (byteFromFile(f) << 8)
+            mach.registers.C_ = byteFromFile(f)
+            mach.registers.B_ = byteFromFile(f)
+            mach.registers.E_ = byteFromFile(f)
+            mach.registers.D_ = byteFromFile(f)
+            mach.registers.L_ = byteFromFile(f)
+            mach.registers.H_ = byteFromFile(f)
+            mach.registers.F_ = byteFromFile(f)
+            mach.registers.A_ = byteFromFile(f)
+            mach.registers.R = byteFromFile(f)
+            mach.registers.I = byteFromFile(f)
+            mach.registers.SP = byteFromFile(f) | (byteFromFile(f) << 8)
+            mach.registers.PC = byteFromFile(f) | (byteFromFile(f) << 8)
+            byteFromFile(f) # reserved
+            byteFromFile(f) # reserved
+            byteFromFile(f) # Border color
+            byteFromFile(f) # reserved
+            b = byteFromFile(f) # status word low
+            mach.registers.IFF = b & 1
+            mach.registers.IFF2 = (b >> 2) & 1
+            if ((b & 0b00001000) == 0):
+               mach.registers.IM = ((b & 0b00000010) >> 1) + 1
+            else:
+               mach.registers.IM = 0
+            byteFromFile(f) # status word high
 
       #carga el fichero restante a partir de la memoria de pantalla
       dir = 16384
@@ -72,6 +135,11 @@ def readSpectrumFile():
          dir = dir + 1
          data = f.read(1)
       f.close()
+
+      if extensio.upper() == '.SNA':
+         mach.registers.PC = mach._memory[mach.registers.SP] | (mach._memory[mach.registers.SP+1]) << 8
+         mach.registers.SP += 2
+
 
    else:
       print ("cancelada carga / ejecutamos ROM")
@@ -212,6 +280,8 @@ class Z80(io.Interruptable):
 
 #Inici
 
+mach = Z80()
+
 readROM("jocs/spectrum.rom") #carreguem la rom sempre
 readSpectrumFile() #funció que càrrega qualsevol snapshoot de spectrum... en cas de no fer-ho arrenca la ROM per defecte
 
@@ -219,7 +289,6 @@ pygame.init()
 pantalla = pygame.display.set_mode((256, 192), pygame.SCALED,  vsync=1)
 pygame.display.set_caption("Hello from Spectrum World")
 
-mach = Z80()
 
 def worker():
    t = time()
