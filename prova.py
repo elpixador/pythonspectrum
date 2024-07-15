@@ -143,6 +143,9 @@ def readSpectrumFile():
 
    else:
       print ("cancelada carga / ejecutamos ROM")
+      mach.registers.PC = 0000
+
+
 
   
 #tratamiento video ULA
@@ -326,7 +329,7 @@ while True:
   #print ('tick={}, fps={}'.format(clock.tick(60), clock.get_fps()))
    conta = conta +1
 
-   if ((conta & 0b00001111) == 0):
+   if ((conta & 0b00111111) == 0):
       flashReversed = not flashReversed
       for p in range(0, 768):
          if ((mem[22528+p] & 0b10000000) != 0):
