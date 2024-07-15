@@ -1527,8 +1527,43 @@ class InstructionSet():
             new = shift_left(registers, data[0])
             set_f5_f3(registers, new)
             return [(registers[i] + get_8bit_twos_comp(d), new)]
+
+
+    # SLL m    
+    @instruction([(0xCB37, ("A", )), (0xCB30, ("B", )), (0xCB31, ("C", )), (0xCB32, ("D", )),
+                  (0xCB33, ("E", )), (0xCB34, ("H", )), (0xCB35, ("L", ))],
+                 0, "SLL {0}", 8)
+    def sll_r(instruction, registers, get_reads, data, r):
+        if get_reads:
+            return []
+        else:
+            registers[r] = shift_left_logical(registers, registers[r])
+            set_f5_f3(registers, registers[r])
+            return []
         
+    @instruction([(0xCB36, ( ))],
+                 0, "SLL (HL)", 15)
+    def sll_hl_(instruction, registers, get_reads, data):
+        if get_reads:
+            return [registers.HL]
+        else:
+            val = shift_left_logical(registers, data[0])
+            set_f5_f3(registers, val)
+            return [(registers.HL, val)]
+
         
+    @instruction([([0xDD, 0xCB, '-', 0x36], ("IX", )),
+                  ([0xFD, 0xCB, '-', 0x36], ("IY", ))],
+                 2, "SLL ({0}+{1:X}H)", 23)
+    def sll_i_d(instruction, registers, get_reads, data, i, d):
+        if get_reads:
+            return [registers[i] + get_8bit_twos_comp(d)]
+        else:
+            new = shift_left_logical(registers, data[0])
+            set_f5_f3(registers, new)
+            return [(registers[i] + get_8bit_twos_comp(d), new)]
+
+
     # SRA m
     @instruction([([0xCB, 0x28], ("B", )), ([0xCB, 0x29], ("C", )), ([0xCB, 0x2A], ("D", )),
                   ([0xCB, 0x2B], ("E", )), ([0xCB, 0x2C], ("H", )), ([0xCB, 0x2D], ("L", )),
