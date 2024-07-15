@@ -258,7 +258,7 @@ class Z80(io.Interruptable):
             else:
                 address = i & 0xFF
                 #data[n] = self._iomap.address[address].read(address)
-                data[n] = 0x5f
+                data[n] = 0xbf
         wrt = ins.execute(data, args)
         for i in wrt:
 
