@@ -143,7 +143,7 @@ def readSpectrumFile():
 
    else:
       print ("cancelada carga / ejecutamos ROM")
-      mach.registers.PC = 0000
+      mach.registers.reset()
 
 
 
@@ -234,7 +234,7 @@ class Z80(io.Interruptable):
         pc = self.registers.PC
         
         if self._interrupted and self.registers.IFF:
-            self.registers.IFF = False
+            #self.registers.IFF = False
             self._interrupted = False
             if (self.registers.HALT == 1): self.registers.HALT = 2 # 0=normal, 1=waiting, 2=interrupted
             if self.registers.IM == 1:
