@@ -1091,32 +1091,54 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            if registers.condition.N == 0:
-                # add operation
-                if ((registers.condition.H != 0) | ((registers.A & 0x0F) > 9)):
-                    registers.A = (registers.A + 0x06) & 0xFF
-                    registers.condition.C = 0
-                    registers.condition.H = 1
-                if ((registers.condition.C != 0) | (((registers.A & 0xF0) >> 4) > 9)):
-                    registers.A = (registers.A + 0x60) & 0xFF
-                    registers.condition.C = 1
-            else:
-                # substract operation
-                if ((registers.condition.H != 0) | ((registers.A & 0x0F) > 9)):
-                    registers.A = (registers.A - 0x06) & 0xFF
-                    registers.condition.C = 0
-                    registers.condition.H = 1
-                if ((registers.condition.C != 0) | (((registers.A & 0xF0) >> 4) > 9)):
-                    registers.A = (registers.A - 0x60) & 0xFF
-                    registers.condition.C = 1
+            # https://raine.1emulation.com/archive/dev/z80-documented.pdf
+            # (The Undocumented Z80 Documented)
+            hn = (registers.A & 0xF0) >> 4 # high nibble
+            ln = registers.A & 0x0F # low nibble
 
+           # Flag C
+            if (registers.condition.C == 0):
+                if (
+                    ((hn >= 0x09) & (ln >= 0x0A)) |
+                    ((hn >= 0x0A) & (ln <= 0x09))
+                ): c_ = 1
+                else: c_ = 0
+            else: c_ = 1
+            
+            # Flag H
+            if (registers.condition.H == 0):
+                if (ln < 0x0A): h_ = 0
+                else: h_ = 1
+            else:
+                if (registers.condition.H == 0): h_ = 0
+                else:
+                    if (ln < 0x06): h_ = 1
+                    else: h_ = 0
+            
+            # Calculate diff
+            diff = 0
+            if (registers.condition.C == 0):
+                if ((hn <= 0x09) & (ln <= 0x09) & (registers.condition.H == 0)): diff = 0x00
+                elif ((hn <= 0x09) & (ln <= 0x09) & (registers.condition.H == 1)): diff = 0x06
+                elif ((hn <= 0x08) & (ln >= 0x0A)): diff = 0x06
+                elif ((hn >= 0x0A) & (ln <= 0x09) & registers.condition.H == 0): diff = 0x60
+                elif ((hn >= 0x09) & (ln >= 0x0A)): diff = 0x66
+                elif ((hn >= 0x0A) & (ln <= 0x09) & (registers.condition.H == 1)): diff = 0x66
+            else:
+                if ((ln <= 0x09) & (registers.condition.H == 0)): diff = 0x60
+                elif ((ln <= 0x09) & (registers.condition.H == 1)): diff = 0x66
+                elif (ln >= 0x0A): diff = 0x66
+
+            if registers.condition.N == 1:
+                diff = get_8bit_twos_comp(diff)
+            registers.A = (registers.A + diff) & 0xFF
+
+            registers.condition.C = c_
+            registers.condition.H = h_
             registers.condition.S = registers.A >> 7
             registers.condition.Z = (registers.A == 0)
             registers.condition.PV = parity(registers.A)
-
-            # TODO: implement DAA
-            #raise Exception("DAA Not implemented ")
-
+            set_f5_f3_from_a(registers)
             return []
 
     @instruction([(0x2F, ())], 0, "CPL", 4)
