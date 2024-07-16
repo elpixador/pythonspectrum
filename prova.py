@@ -238,12 +238,12 @@ class Z80(io.Interruptable):
             self._interrupted = False
             if (self.registers.HALT == 1): self.registers.HALT = 2 # 0=normal, 1=waiting, 2=interrupted
             if self.registers.IM == 1:
-                print ("!!! Interrupt Mode 1 !!!")
+                #print ("!!! Interrupt Mode 1 !!!")
                 ins, args = self.instructions << 0xCD
                 ins, args = self.instructions << 0x38
                 ins, args = self.instructions << 0x00
             elif self.registers.IM == 2:
-                print ("!!! Interrupt Mode 2 !!!")
+                #print ("!!! Interrupt Mode 2 !!!")
                 imadr = (self.registers.I << 8) | 0xFF
                 ins, args = self.instructions << 0xCD
                 ins, args = self.instructions << self._memory[imadr & 0xFFFF]
@@ -265,14 +265,13 @@ class Z80(io.Interruptable):
                 data[n] = 0xbf
         wrt = ins.execute(data, args)
         for i in wrt:
-
-            if i[0] > 0x10000:
-                address = i[0] & 0xFF
+            adr = i[0]
+            if adr > 0x10000:
+                address = adr & 0xFF
                 #iomap.address[address].write.emit(address, i[1])
                 ##self._iomap.address[address].write(address, i[1])
                 #print (chr(i[1]))
             else:
-               adr = i[0]
                if (adr > 16383): # Només escrivim a la RAM
                   # Caché per a renderscreenDiff
                   if ((adr < 23296) & (self._memory[adr] != i[1])): # És pantalla i ha canviat?
@@ -333,7 +332,7 @@ while True:
   #print ('tick={}, fps={}'.format(clock.tick(60), clock.get_fps()))
    conta = conta +1
 
-   if ((conta & 0b00111111) == 0):
+   if ((conta & 0b00011111) == 0):
       flashReversed = not flashReversed
       for p in range(0, 768):
          if ((mem[22528+p] & 0b10000000) != 0):
