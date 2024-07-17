@@ -24,7 +24,10 @@ colorTable = ( # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour_
 flashReversed = False
 pantalla = None
 tilechanged = [True] * 768
-
+keysSpectrum = {
+   0x7FFE: 0b10111111, 0xBFFE: 0b10111111, 0xDFFE: 0b10111111, 0xEFFE: 0b10111111,
+   0xF7FE: 0b10111111, 0xFBFE: 0b10111111, 0xFDFE: 0b10111111, 0xFEFE: 0b10111111
+}
 
 #tratamiento emulación Z80
 
@@ -234,7 +237,6 @@ class Z80(io.Interruptable):
         pc = self.registers.PC
         
         if self._interrupted and self.registers.IFF:
-            #self.registers.IFF = False
             self._interrupted = False
             if (self.registers.HALT == 1): self.registers.HALT = 2 # 0=normal, 1=waiting, 2=interrupted
             if self.registers.IM == 1:
@@ -252,7 +254,7 @@ class Z80(io.Interruptable):
             while not ins:
                 ins, args = self.instructions << self._memory[self.registers.PC]
                 self.registers.PC = util.inc16(self.registers.PC)
-            print( "{0:X} : {1} ".format(pc, ins.assembler(args)))
+            #print( "{0:X} : {1} ".format(pc, ins.assembler(args)))
         
         rd =  ins.get_read_list(args)
         data = [0] * len(rd)
@@ -260,9 +262,12 @@ class Z80(io.Interruptable):
             if i < 0x10000:
                 data[n] = self._memory[i]
             else:
-                address = i & 0xFF
-                #data[n] = self._iomap.address[address].read(address)
-                data[n] = 0xbf
+               address = i & 0xFFFF
+               if address in keysSpectrum:
+                  data[n] = keysSpectrum[address]
+               else:
+                  data[n] = 0xFF
+
         wrt = ins.execute(data, args)
         for i in wrt:
             adr = i[0]
