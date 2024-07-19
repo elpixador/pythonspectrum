@@ -403,6 +403,7 @@ def worker():
 
 # init gui and pygame windows/screens
 def init_tk():
+    print("System is: " + system)
     global root
     root = Tk()
     root.title("Pythonspectrum")
