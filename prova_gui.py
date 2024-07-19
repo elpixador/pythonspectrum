@@ -143,6 +143,35 @@ def byteFromFile(aFile):
     data = aFile.read(1)
     return int.from_bytes(data, byteorder="big", signed=False)
 
+def memFromFile(aFile):
+   dir = 16384
+   data = aFile.read(1)
+   while (data):
+      mem[dir] = int.from_bytes(data, byteorder='big', signed=False)
+      dir = dir + 1
+      data = aFile.read(1)
+
+def memFromPackedFile(aFile, aInici, aLongitud):
+   dir = aInici
+   old = 0
+   while (aLongitud > 0):
+      bb = byteFromFile(aFile)
+      aLongitud -= 1
+      if ((old == 0xED) & (bb == 0xED)):
+         dir -= 1
+         cops = byteFromFile(aFile)
+         if (cops == 0): break
+         bb = byteFromFile(aFile)
+         for i in range(cops):
+            mem[dir] = bb
+            dir += 1
+         aLongitud -= 2
+         old = 0
+      else:
+         mem[dir] = bb
+         old = bb
+         dir += 1
+
 
 def readSpectrumFile():
     fichero = filedialog.askopenfile(
@@ -166,7 +195,52 @@ def readSpectrumFile():
         if (
             extensio.upper() == ".Z80"
         ):  # https://worldofspectrum.org/faq/reference/z80format.htm
-            data = f.read(30)  # lee los registros del procesador
+            f.seek(0, 2)
+            sz = f.tell()
+            f.seek(0, 0)
+            mach.registers.A = byteFromFile(f)
+            mach.registers.F = byteFromFile(f)
+            mach.registers.C = byteFromFile(f)
+            mach.registers.B = byteFromFile(f)
+            mach.registers.L = byteFromFile(f)
+            mach.registers.H = byteFromFile(f)
+            mach.registers.PC = byteFromFile(f) | (byteFromFile(f) << 8)
+            mach.registers.SP = byteFromFile(f) | (byteFromFile(f) << 8)
+            mach.registers.I = byteFromFile(f)
+            mach.registers.R = byteFromFile(f) & 0x7F
+            b = byteFromFile(f) # Bordercolor etc
+            mach.registers.R = mach.registers.R | ((b & 0x01) << 7)
+            isPacked = (b & 0b00100000 >> 5)
+            mach.registers.E = byteFromFile(f)
+            mach.registers.D = byteFromFile(f)
+            mach.registers.C_ = byteFromFile(f)
+            mach.registers.B_ = byteFromFile(f)
+            mach.registers.E_ = byteFromFile(f)
+            mach.registers.D_ = byteFromFile(f)
+            mach.registers.L_ = byteFromFile(f)
+            mach.registers.H_ = byteFromFile(f)
+            mach.registers.A_ = byteFromFile(f)
+            mach.registers.F_ = byteFromFile(f)
+            mach.registers.IY = byteFromFile(f) | (byteFromFile(f) << 8)
+            mach.registers.IX = byteFromFile(f) | (byteFromFile(f) << 8)
+            mach.registers.IFF = byteFromFile(f)
+            mach.registers.IFF2 = byteFromFile(f)
+            mach.registers.IM = byteFromFile(f) & 0x03
+            if (mach.registers.PC == 0): # Versions 2 i 3 del format
+               b = byteFromFile(f) | (byteFromFile(f) << 8)
+               mach.registers.PC = byteFromFile(f) | (byteFromFile(f) << 8)
+               f.read(b-2) # Skip b-2 bytes
+               while (sz > f.tell()):
+                  lon = byteFromFile(f) | (byteFromFile(f) << 8) # length of compressed data
+                  b = byteFromFile(f) # page
+                  if (b == 4): memFromPackedFile(f, 0x8000, lon)
+                  elif (b == 5): memFromPackedFile(f, 0xC000, lon)
+                  elif (b == 8): memFromPackedFile(f, 0x4000, lon)
+            else: # Versió 1 del format
+               if (isPacked): memFromPackedFile(f, 16384, 65536)
+               else: memFromFile(f)
+            f.close()
+
         elif (
             extensio.upper() == ".SNA"
         ):  # https://worldofspectrum.org/faq/reference/formats.htm
@@ -196,6 +270,13 @@ def readSpectrumFile():
             mach.registers.SP = byteFromFile(f) | (byteFromFile(f) << 8)
             mach.registers.IM = byteFromFile(f) & 0x03
             byteFromFile(f)  # Bordercolor
+            memFromFile(f)
+            f.close()
+            mach.registers.PC = (
+                mach._memory[mach.registers.SP]
+                | (mach._memory[mach.registers.SP + 1]) << 8
+            )
+            mach.registers.SP += 2
 
         elif (
             extensio.upper() == ".SP"
@@ -235,22 +316,8 @@ def readSpectrumFile():
             else:
                 mach.registers.IM = 0
             byteFromFile(f)  # status word high
-
-        # carga el fichero restante a partir de la memoria de pantalla
-        dir = 16384
-        data = f.read(1)
-        while data:
-            mem[dir] = int.from_bytes(data, byteorder="big", signed=False)
-            dir = dir + 1
-            data = f.read(1)
-        f.close()
-
-        if extensio.upper() == ".SNA":
-            mach.registers.PC = (
-                mach._memory[mach.registers.SP]
-                | (mach._memory[mach.registers.SP + 1]) << 8
-            )
-            mach.registers.SP += 2
+            memFromFile(f)
+            f.close()
 
     else:
         print("cancelada carga / ejecutamos ROM")
@@ -327,7 +394,7 @@ def worker():
         # t = time()
         ins, args = mach.step_instruction()
         cicles -= ins.tstates
-        if cicles < 0:
+        if cicles <= 0:
             cicles += 70908
             mach.interrupt()
     raise Exception("Emulator Quitting...")

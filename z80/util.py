@@ -12,21 +12,17 @@ conditions = [(0 << 3, 'NZ', 'Z', 0),
 
 def get_16bit_twos_comp(val):
     """ Return the value of an 8bit 2s comp number"""
-    sg = val >> 15 
-    if sg == 1:
-        mag = - ((val ^  0xFFFF) +  1)
-        return mag
-    else:
+    if (val & 0x8000) == 0:
         return val
+    else:
+        return - ((val ^  0xFFFF) +  1)
 
 def get_8bit_twos_comp(val):
     """ Return the value of an 8bit 2s comp number"""
-    sg = val >> 7 
-    if sg == 1:
-        mag = - ((val ^  0xFF) +  1)
-        return mag
-    else:
+    if (val & 0x80) == 0:
         return val
+    else:
+        return - ((val ^  0xFF) +  1) 
         
 def make_8bit_twos_comp(val):
     if val > -1:
@@ -146,28 +142,16 @@ def subtract16(a, b, registers):
     return res &  0xFFFF
 
 def inc16(val):
-    val += 1
-    if val > 0xFFFF: 
-        val = 0x0
-    return val
+    return (val + 1) & 0xFFFF
 
 def dec16(val):
-    val -= 1
-    if val < 0:
-        val =  0xFFFF
-    return val
+    return (val - 1) & 0xFFFF
 
 def inc8(val):
-    val += 1
-    if val > 0xFF: 
-        val = 0x0
-    return val
+    return (val + 1) & 0xFF
 
 def dec8(val):
-    val -= 1
-    if val < 0:
-        val =  0xFF
-    return val
+    return (val - 1) & 0xFF
 
 def parity(n):
     p=0
@@ -282,8 +266,7 @@ def shift_left_logical(registers, n):
 
 def shift_right(registers, n):
     c = n & 0x01
-    msb = n >> 7
-    v = n >> 1 | (msb << 7)
+    v = n >> 1 | (n & 0x80)
     registers.condition.S = v >> 7
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
@@ -306,11 +289,7 @@ def shift_right_logical(registers, n):
 
 
 def offset_pc(registers, jump):
-    registers.PC += get_8bit_twos_comp(jump)
-    if registers.PC > 0xFFFF:
-        registers.PC -= 0xFFFF - 1
-    if registers.PC < 0:
-        registers.PC += 0xFFFF + 1
+    registers.PC = (registers.PC + get_8bit_twos_comp(jump)) & 0xFFFF
         
 def set_f5_f3(registers, v):
     registers.condition.F5 = v & 0x20
