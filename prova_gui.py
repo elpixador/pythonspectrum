@@ -401,45 +401,48 @@ def worker():
     raise Exception("Emulator Quitting...")
 
 
-# init gui and pygame windows/screens
+# init Tk window and interface
 def init_tk():
     print("System is: " + system)
     global root
     root = Tk()
     root.title("Pythonspectrum")
+    root.update()
+
     if system == "Windows":
+        os.environ["SDL_VIDEODRIVER"] = "windib"
         root.iconbitmap('./window.ico')
-    else:
+    elif system == "Linux":
+        os.environ["SDL_VIDEODRIVER"] = "x11"
         root.iconbitmap('./window.png')
+    else:
+        #os.environ["SDL_VIDEODRIVER"] = "cocoa"
+        root.iconbitmap('./window.png')
+    
+    embed = Frame(root, width=WIDTH * SCALE, height=HEIGHT * SCALE)
+    embed.pack()
+
+    os.environ["SDL_WINDOWID"] = str(embed.winfo_id())
+    #alternativa si peta : os.environ["SDL_WINDOWID"] = str(1)
+
     menubar = Menu(root)
     filemenu = Menu(menubar, tearoff=0)
     filemenu.add_command(label="Open File...", command=readSpectrumFile)
     filemenu.add_command(label="Quit", command=stop_running)
     menubar.add_cascade(label="File", menu=filemenu)
     root.config(menu=menubar)
-    global embed
-    embed = Frame(root, width=WIDTH * SCALE, height=HEIGHT * SCALE)
-    embed.pack()
     root.protocol("WM_DELETE_WINDOW", stop_running)
-    
+
     root.update()
 
 
 def init_pygame():
-    pygame.init()
-    # Tell pygame to use the tk window we created as a display
-    if system == "Windows":
-        os.environ["SDL_VIDEODRIVER"] = "windib"
-    elif system == "Linux":
-        os.environ["SDL_VIDEODRIVER"] = "x11"
-    else:
-        os.environ["SDL_VIDEODRIVER"] = "cocoa"
-    os.environ["SDL_WINDOWID"] = str(embed.winfo_id())
+    # Pygame will use the frame we created in Tk as sort of virtual screen
+    # as per the SDL_WINDOWID variable
     pygame.display.init()
     global pantalla
     pantalla = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SCALED, vsync=1)
-    #pygame.display.set_caption("Hello from Spectrum World")
-    #pygame.display.flip()
+    pygame.display.update
 
 
 # INICI
