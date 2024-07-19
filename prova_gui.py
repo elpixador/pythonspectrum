@@ -335,6 +335,10 @@ def worker():
 
 # init gui and pygame windows/screens
 def init_tk():
+    global root
+    root = Tk()
+    root.title("Pythonspectrum")
+    root.iconbitmap('./window.ico')
     menubar = Menu(root)
     filemenu = Menu(menubar, tearoff=0)
     filemenu.add_command(label="Open File...", command=readSpectrumFile)
@@ -345,6 +349,7 @@ def init_tk():
     embed = Frame(root, width=WIDTH * SCALE, height=HEIGHT * SCALE)
     embed.pack()
     root.protocol("WM_DELETE_WINDOW", stop_running)
+    
     root.update()
 
 
@@ -362,8 +367,8 @@ def init_pygame():
     pygame.display.init()
     global pantalla
     pantalla = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SCALED, vsync=1)
-    pygame.display.set_caption("Hello from Spectrum World")
-    pygame.display.flip()
+    #pygame.display.set_caption("Hello from Spectrum World")
+    #pygame.display.flip()
 
 
 # INICI
@@ -373,7 +378,6 @@ SCALE = 3
 
 mach = Z80()
 
-root = Tk()
 init_tk()
 init_pygame()
 
