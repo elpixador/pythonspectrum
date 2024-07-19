@@ -39,6 +39,7 @@ keysSpectrum = {
 }
 running = True
 ROM = "jocs/spectrum.rom"
+system = platform.system()
 
 
 # classes
@@ -405,7 +406,10 @@ def init_tk():
     global root
     root = Tk()
     root.title("Pythonspectrum")
-    root.iconbitmap('./window.ico')
+    if system == "Windows":
+        root.iconbitmap('./window.ico')
+    else:
+        root.iconbitmap('./window.png')
     menubar = Menu(root)
     filemenu = Menu(menubar, tearoff=0)
     filemenu.add_command(label="Open File...", command=readSpectrumFile)
@@ -423,7 +427,6 @@ def init_tk():
 def init_pygame():
     pygame.init()
     # Tell pygame to use the tk window we created as a display
-    system = platform.system()
     if system == "Windows":
         os.environ["SDL_VIDEODRIVER"] = "windib"
     elif system == "Linux":
