@@ -70,12 +70,12 @@ def memFromPackedFile(aFile, aInici, aLongitud):
          if (cops == 0): break
          bb = byteFromFile(aFile)
          for i in range(cops):
-            mem[dir] = bb
+            if dir <= 0xFFFF: mem[dir] = bb
             dir += 1
          aLongitud -= 2
          old = 0
       else:
-         mem[dir] = bb
+         if dir <= 0xFFFF: mem[dir] = bb
          old = bb
          dir += 1
 
@@ -134,7 +134,7 @@ def readSpectrumFile():
                   elif (b == 5): memFromPackedFile(f, 0xC000, lon)
                   elif (b == 8): memFromPackedFile(f, 0x4000, lon)
             else: # Versió 1 del format
-               if (isPacked): memFromPackedFile(f, 16384, 65536)
+               if (isPacked): memFromPackedFile(f, 16384, 49152)
                else: memFromFile(f)
             f.close()
 
