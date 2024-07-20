@@ -131,19 +131,15 @@ class Z80(io.Interruptable):
                 ##self._iomap.address[address].write(address, i[1])
                 # print (chr(i[1]))
             else:
-                if adr > 16383:  # Només escrivim a la RAM
-                    # Caché per a renderscreenDiff
-                    if (adr < 23296) & (
-                        self._memory[adr] != i[1]
-                    ):  # És pantalla i ha canviat?
-                        if adr < 22528:  # Patrons o atributs?
-                            tilechanged[
-                                ((adr & 0b0001100000000000) >> 3) | adr & 0b11111111
-                            ] = True
-                        else:
-                            tilechanged[adr & 0b0000001111111111] = True
-                    # Escrivim
-                    self._memory[adr] = i[1]
+               if (adr > 16383): # Només escrivim a la RAM
+                  # Caché per a renderscreenDiff
+                  if ((adr < 23296) & (self._memory[adr] != i[1])): # És pantalla i ha canviat?
+                     if (adr < 22528): # Patrons o atributs?
+                        tilechanged[((adr & 0b0001100000000000) >> 3) | adr & 0b11111111] = True
+                     else:
+                        tilechanged[adr & 0b0000001111111111] = True
+                  # Escrivim
+                  self._memory[adr] = i[1]
 
         return ins, args
 
