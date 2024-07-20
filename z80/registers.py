@@ -65,8 +65,8 @@ class Registers(dict):
             self[attr[0]] = val >> 8
             self[attr[1]] = val &  0xFF
         elif attr in ["IXH", "IYH"]:
-            self[attr[0:2]] = (self[attr[0:2]] & 0x00FF) | (val >> 8)
-        elif attr in ["IXL", "IYH"]:
+            self[attr[0:2]] = (self[attr[0:2]] & 0x00FF) | (val << 8)
+        elif attr in ["IXL", "IYL"]:
             self[attr[0:2]] = (self[attr[0:2]] & 0xFF00) | val
         else:
             self[attr] = val
