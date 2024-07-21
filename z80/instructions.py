@@ -1201,7 +1201,7 @@ class InstructionSet():
             else: c_ = 1
             
             # Flag H
-            if (registers.condition.H == 0):
+            if (registers.condition.N == 0):
                 if (ln < 0x0A): h_ = 0
                 else: h_ = 1
             else:
@@ -1216,7 +1216,7 @@ class InstructionSet():
                 if ((hn <= 0x09) & (ln <= 0x09) & (registers.condition.H == 0)): diff = 0x00
                 elif ((hn <= 0x09) & (ln <= 0x09) & (registers.condition.H == 1)): diff = 0x06
                 elif ((hn <= 0x08) & (ln >= 0x0A)): diff = 0x06
-                elif ((hn >= 0x0A) & (ln <= 0x09) & registers.condition.H == 0): diff = 0x60
+                elif ((hn >= 0x0A) & (ln <= 0x09) & (registers.condition.H == 0)): diff = 0x60
                 elif ((hn >= 0x09) & (ln >= 0x0A)): diff = 0x66
                 elif ((hn >= 0x0A) & (ln <= 0x09) & (registers.condition.H == 1)): diff = 0x66
             else:
@@ -1225,8 +1225,9 @@ class InstructionSet():
                 elif (ln >= 0x0A): diff = 0x66
 
             if registers.condition.N == 1:
-                diff = get_8bit_twos_comp(diff)
-            registers.A = (registers.A + diff) & 0xFF
+                registers.A = get_8bit_twos_comp((registers.A - diff)) & 0xFF
+            else:
+                registers.A = (registers.A + diff) & 0xFF
 
             registers.condition.C = c_
             registers.condition.H = h_
