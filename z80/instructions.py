@@ -188,7 +188,7 @@ class InstructionSet():
                   (0xFD5F, ("E", "A"), 8), (0xFD58, ("E", "B"), 8), (0xFD59, ("E", "C"), 8), (0xFD5A, ("E", "D"), 8), (0xFD5B, ("E", "E"), 8),
                   (0xFD5C, ("E", "IYH"), 8), (0xFD5D, ("E", "IYL"), 8),
                   (0xFD67, ("IYH", "A"), 8), (0xFD60, ("IYH", "B"), 8), (0xFD61, ("IYH", "C"), 8), (0xFD62, ("IYH", "D"), 8), (0xFD63, ("IYH", "E"), 8),
-                  (0xFD64, ("H", "H"), 8), (0xFD65, ("H", "L"), 8),
+                  (0xFD64, ("IYH", "IYH"), 8), (0xFD65, ("IYH", "IYL"), 8),
                   (0xFD6F, ("IYL", "A"), 8), (0xFD68, ("IYL", "B"), 8), (0xFD69, ("IYL", "C"), 8), (0xFD6A, ("IYL", "D"), 8), (0xFD6B, ("IYL", "E"), 8),
                   (0xFD6C, ("IYL", "IYH"), 8), (0xFD6D, ("IYL", "IYL"), 8),
                   (0xED47, ("I", "A"), 9), (0xED4F, ("R", "A"), 9),
@@ -1291,11 +1291,8 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            if (registers.HALT < 2): # 0=normal, 1=waiting, 2=interrupted
-                registers.HALT = 1
-                registers.PC -= 1
-            else:
-                registers.HALT = 0
+            registers.HALT = True
+            registers.PC -= 1
             return []
 
 
