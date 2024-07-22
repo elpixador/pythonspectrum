@@ -1136,7 +1136,7 @@ class InstructionSet():
             return [registers[i] + get_8bit_twos_comp(d)]
         else:
             new = add8(data[0], 1, registers, C=False )
-            return [(registers.HL, new)]
+            return [(registers[i] + get_8bit_twos_comp(d), new)]
 
 
     #---- DEC s ----
@@ -1300,8 +1300,11 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers.HALT = True
-            registers.PC -= 1
+            if (registers.HALT < 2): # 0=normal, 1=waiting, 2=interrupted
+                registers.HALT = 1
+                registers.PC -= 1
+            else:
+                registers.HALT = 0
             return []
 
 
