@@ -688,9 +688,9 @@ class InstructionSet():
             registers.condition.PV = registers.BC != 0
             # F3 is bit 3 of (A - (HL) - H), H 
             # F5 is bit 1 of (A - (HL) - H), H a
-            f5f3 = registers.A - data[0] -  registers.H
-            registers.condition.F5 = f5f3 & 0x01
-            registers.condition.F3 = f5f3 & 0x04
+            f5f3 = registers.A - data[0] -  registers.condition.H
+            registers.condition.F5 = f5f3 & 0x02
+            registers.condition.F3 = f5f3 & 0x08
             return []
 
     @instruction([(0xEDB1, ())], 0, "CPIR", 16)
@@ -709,6 +709,9 @@ class InstructionSet():
             else:
                 instruction.tstates = 16
             registers.condition.PV = registers.BC != 0
+            f5f3 = registers.A - data[0] -  registers.condition.H
+            registers.condition.F5 = f5f3 & 0x02
+            registers.condition.F3 = f5f3 & 0x08
             return []
 
     @instruction([(0xEDA9, ())], 0, "CPD", 16)
@@ -721,6 +724,9 @@ class InstructionSet():
 
             subtract8(registers.A, data[0], registers)
             registers.condition.PV = registers.BC != 0
+            f5f3 = registers.A - data[0] -  registers.condition.H
+            registers.condition.F5 = f5f3 & 0x02
+            registers.condition.F3 = f5f3 & 0x08
             return []
 
     @instruction([(0xEDB9, ())], 0, "CPDR", 16)
@@ -739,6 +745,9 @@ class InstructionSet():
             else:
                 instruction.tstates = 16
             registers.condition.PV = registers.BC != 0
+            f5f3 = registers.A - data[0] -  registers.condition.H
+            registers.condition.F5 = f5f3 & 0x02
+            registers.condition.F3 = f5f3 & 0x08
             return []
 
     #----------------------------------------------------------------------
