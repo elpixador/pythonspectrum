@@ -189,7 +189,7 @@ def readSpectrumFile():
             mach.registers.IY = byteFromFile(f) | (byteFromFile(f) << 8)
             mach.registers.IX = byteFromFile(f) | (byteFromFile(f) << 8)
             b = byteFromFile(f)
-            mach.registers.IFF = b & 1
+            mach.registers.IFF = (b >> 2) & 1
             mach.registers.IFF2 = (b >> 2) & 1
             mach.registers.R = byteFromFile(f)
             mach.registers.F = byteFromFile(f)
