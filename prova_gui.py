@@ -1,7 +1,11 @@
-import pygame, sys, os, threading, platform
+from operator import is_
+import sys, os, threading, platform
 from tkinter import *
 from tkinter import filedialog, messagebox
 from time import sleep, time
+import pygame
+# PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
+import pygame_gui
 
 ## Z80 CPU Emulator / https://github.com/cburbridge/z80
 from z80 import util, io, registers, instructions
@@ -31,7 +35,6 @@ colorTable = (  # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour
     ),  # bright 1
 )
 flashReversed = False
-pantalla = None
 tilechanged = [True] * 768
 keysSpectrum = { # http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/keyboard
    0x7FFE: 0b10111111, 0xBFFE: 0b10111111, 0xDFFE: 0b10111111, 0xEFFE: 0b10111111,
@@ -67,11 +70,6 @@ tkKeys = { # keycode
    64: [0x7FFE, 0x02], # Sym (Alt)
    50: [0xFEFE, 0x01], 62: [0xFEFE, 0x01] # Shift (LShift, RShift)
 }
-
-running = True
-ROM = "jocs/spectrum.rom"
-system = platform.system()
-
 
 # classes
 class Z80(io.Interruptable):
@@ -144,11 +142,6 @@ class Z80(io.Interruptable):
         return ins, args
 
 
-# global procedures
-def stop_running():  # signals the end of the program
-    global running
-    running = False
-
 def keydown(tecla):
     if tecla.keycode in tkKeys:
         k = tkKeys[tecla.keycode]
@@ -160,7 +153,7 @@ def keyup(tecla):
         keysSpectrum[k[0]] = keysSpectrum[k[0]] | k[1]
 
 def quit_app():
-    root.destroy()
+    print("Emulator quitting...")
     pygame.quit()
     sys.exit()
 
@@ -211,6 +204,7 @@ def memFromPackedFile(aFile, aInici, aLongitud):
 
 
 def readSpectrumFile():
+    halt = True
     fichero = filedialog.askopenfile(
         title="Obrir arxiu",
         filetypes=(
@@ -220,6 +214,7 @@ def readSpectrumFile():
             ("Tots", "*"),
         ),
     )
+    halt = False
 
     if fichero:
         print("el fichero es " + str(fichero.name))
@@ -385,14 +380,13 @@ def renderline(y, adr_pattern):
         b = 0b10000000
         while b > 0:
             if (mem[adr_pattern] & b) == 0:
-                pantalla.set_at((x, y), paper)
+                zx_screen.set_at((x, y), paper)
             else:
-                pantalla.set_at((x, y), ink)
+                zx_screen.set_at((x, y), ink)
             x = x + 1
             b = b >> 1
         adr_pattern = adr_pattern + 1
         adr_attributs = adr_attributs + 1
-
 
 def renderscreenFull():
     dir = 16384
@@ -414,9 +408,9 @@ def renderscreenDiff():
                 b = 0b10000000
                 while b > 0:
                     if (mem[adr_pattern + offset] & b) == 0:
-                        pantalla.set_at((x, y), paper)
+                        zx_screen.set_at((x, y), paper)
                     else:
-                        pantalla.set_at((x, y), ink)
+                        zx_screen.set_at((x, y), ink)
                     b >>= 1
                     x += 1
                 y += 1
@@ -427,93 +421,93 @@ def worker():
     t = time()
     cicles = 70908
 
-    while running == True:
-        # t = time()
-        ins, args = mach.step_instruction()
-        cicles -= ins.tstates
-        if cicles <= 0:
-            cicles += 70908
-            mach.interrupt()
+    while is_running == True:
+        while halt == False:
+            # t = time()
+            ins, args = mach.step_instruction()
+            cicles -= ins.tstates
+            if cicles <= 0:
+                cicles += 70908
+                mach.interrupt()
     raise Exception("Emulator Quitting...")
 
-
-# init Tk window and interface
-def init_tk():
-    print("System is: " + system)
-    global root
-    root = Tk()
-    root.title("Pythonspectrum")
-    root.update()
-
-    if system == "Windows":
-        os.environ["SDL_VIDEODRIVER"] = "windib"
-        root.iconbitmap('./window.ico')
-    elif system == "Linux":
-        os.environ["SDL_VIDEODRIVER"] = "x11"
-        root.iconbitmap('./window.png')
-    else:
-        #os.environ["SDL_VIDEODRIVER"] = "cocoa"
-        root.iconbitmap('./window.png')
-    
-    embed = Frame(root, width=WIDTH * SCALE, height=HEIGHT * SCALE)
-    embed.pack()
-
-    os.environ["SDL_WINDOWID"] = str(embed.winfo_id())
-    #alternativa si peta : os.environ["SDL_WINDOWID"] = str(1)
-
-    menubar = Menu(root)
-    filemenu = Menu(menubar, tearoff=0)
-    filemenu.add_command(label="Open File...", command=readSpectrumFile)
-    filemenu.add_command(label="Quit", command=stop_running)
-    menubar.add_cascade(label="File", menu=filemenu)
-    root.config(menu=menubar)
-    root.protocol("WM_DELETE_WINDOW", stop_running)
-    root.bind('<KeyPress>', keydown)
-    root.bind('<KeyRelease>', keyup)
-
-    root.update()
-
-
-def init_pygame():
-    # Pygame will use the frame we created in Tk as sort of virtual screen
-    # as per the SDL_WINDOWID variable
-    pygame.display.init()
-    global pantalla
-    pantalla = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SCALED, vsync=1)
-    pygame.display.update
+def init_gfx():
+    pass
 
 
 # INICI
-WIDTH = 256
-HEIGHT = 192
+
+ROM = "jocs/spectrum.rom"
+
 SCALE = 3
+ZX_RES = WIDTH, HEIGHT = 256, 192
+MARGIN = 60 
+UI_HEIGHT = 20
+
+clock = pygame.time.Clock()
 
 mach = Z80()
 
-init_tk()
-init_pygame()
+pygame.init()
+pygame.display.set_caption("Pythonspectrum")
 
-readROM()
-renderscreenFull()
-thread = threading.Thread(target=worker, daemon=True)
-thread.start()
+#this is pygame screen 
+main_screen = pygame.display.set_mode(((WIDTH+MARGIN)*SCALE, (HEIGHT+MARGIN)*SCALE+20), vsync=1)
+
+# this is the surface where the unscaled spectrum screen will be drawn
+zx_screen = pygame.Surface(ZX_RES)
+zx_screen.fill(pygame.Color('#FF0000'))
+
+# this is the scaled zx spectrum screen that will be displayed
+zx_scaled = pygame.transform.scale(zx_screen,(WIDTH*SCALE, HEIGHT*SCALE))
+main_screen.blit(zx_scaled, (MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT))
+
+# this is where we are going to draw the UI
+gui_manager = pygame_gui.UIManager((WIDTH, HEIGHT))
+b_load_game = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((2, 1), (90, 19)), text='Load Game', manager=gui_manager)
+b_quit_game = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((92, 1), (90, 19)), text='Quit Game', manager=gui_manager)
+gui_manager.draw_ui(main_screen)
 
 clock = pygame.time.Clock()
 clock.tick(50)
+is_running = True
+halt = False
+
+readROM()
+renderscreenFull()
+
+print("Platform is: ",platform.system())
+
+thread = threading.Thread(target=worker, daemon=True)
+thread.start()
 
 conta = 0
 
-while True:
-    if running:
-        conta = conta + 1
-        if (conta & 0b00011111) == 0:
-            flashReversed = not flashReversed
-            for p in range(0, 768):
-                if (mem[22528 + p] & 0b10000000) != 0:
-                    tilechanged[p] = True
+while is_running:
+    conta = conta + 1
+    if (conta & 0b00011111) == 0:
+        flashReversed = not flashReversed
+        for p in range(0, 768):
+            if (mem[22528 + p] & 0b10000000) != 0:
+                tilechanged[p] = True
 
-        renderscreenDiff()
-        pygame.display.flip()
-        root.update()
-    else:  # sortim del programa (ordenadament)
-        quit_app()
+    time_delta = clock.tick(60)/1000.0
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT or (event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element ==b_quit_game):
+            is_running = False
+
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == b_load_game:
+                readSpectrumFile()
+
+        gui_manager.process_events(event)
+
+    renderscreenDiff()
+    gui_manager.update(time_delta)
+    gui_manager.draw_ui(main_screen)
+    zx_scaled = pygame.transform.scale(zx_screen,(WIDTH*SCALE, HEIGHT*SCALE))
+    main_screen.blit(zx_scaled, (MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT))
+
+    pygame.display.update()
+
+quit_app()
