@@ -125,7 +125,7 @@ class Z80(io.Interruptable):
                         b >>= 1
                     data[n] = res
                 else:
-                    data[n] = 0xFF
+                    data[n] = 0x00
 
         wrt = ins.execute(data, args)
         for i in wrt:
