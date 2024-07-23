@@ -3,9 +3,12 @@ import sys, os, threading, platform
 from tkinter import *
 from tkinter import filedialog, messagebox
 from time import sleep, time
+from typing import Self
 import pygame
 # PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
 import pygame_gui
+from pygame_gui.windows import UIFileDialog
+from pygame_gui.core.utility import create_resource_path
 
 ## Z80 CPU Emulator / https://github.com/cburbridge/z80
 from z80 import util, io, registers, instructions
@@ -210,24 +213,15 @@ def memFromPackedFile(aFile, aInici, aLongitud):
          dir += 1
 
 
-def readSpectrumFile():
-    halt = True
-    fichero = filedialog.askopenfile(
-        title="Obrir arxiu",
-        filetypes=(
-            ("Arxius .SNA", "*.SNA"),
-            ("Arxius .SP", "*.SP"),
-            ("Arxius .Z80", "*.Z80"),
-            ("Tots", "*"),
-        ),
-    )
-    halt = False
+def readSpectrumFile(fichero):
 
     if fichero:
-        print("el fichero es " + str(fichero.name))
-        nom, extensio = os.path.splitext(fichero.name)
+        extensio = os.path.splitext(fichero)[1]
+        nom = os.path.basename(fichero)
+        print("file to load is: " + nom)
 
-        f = open(fichero.name, mode="rb")
+
+        f = open(fichero, mode="rb")
 
         # no se puede utilizar match sino es python >3.10
 
@@ -359,8 +353,7 @@ def readSpectrumFile():
             f.close()
 
     else:
-        print("cancelada carga / ejecutamos ROM")
-        mach.registers.reset()
+        pass
 
     renderscreenFull()
 
@@ -429,13 +422,12 @@ def worker():
     cicles = 70908
 
     while is_running == True:
-        while halt == False:
-            # t = time()
-            ins, args = mach.step_instruction()
-            cicles -= ins.tstates
-            if cicles <= 0:
-                cicles += 70908
-                mach.interrupt()
+        # t = time()
+        ins, args = mach.step_instruction()
+        cicles -= ins.tstates
+        if cicles <= 0:
+            cicles += 70908
+            mach.interrupt()
     raise Exception("Emulator Quitting...")
 
 def init_gfx():
@@ -463,22 +455,22 @@ main_screen = pygame.display.set_mode(((WIDTH+MARGIN)*SCALE, (HEIGHT+MARGIN)*SCA
 
 # this is the surface where the unscaled spectrum screen will be drawn
 zx_screen = pygame.Surface(ZX_RES)
-zx_screen.fill(pygame.Color('#FF0000'))
 
 # this is the scaled zx spectrum screen that will be displayed
-zx_scaled = pygame.transform.scale(zx_screen,(WIDTH*SCALE, HEIGHT*SCALE))
-main_screen.blit(zx_scaled, (MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT))
+zx_scaled = pygame.Surface((WIDTH*SCALE, HEIGHT*SCALE))
 
 # this is where we are going to draw the UI
-gui_manager = pygame_gui.UIManager((WIDTH, HEIGHT))
+gui_manager = pygame_gui.UIManager(((WIDTH+MARGIN)*SCALE, (HEIGHT+MARGIN)*SCALE+20))
 b_load_game = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((2, 1), (90, 19)), text='Load Game', manager=gui_manager)
 b_quit_game = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((92, 1), (90, 19)), text='Quit Game', manager=gui_manager)
+
+
+
 gui_manager.draw_ui(main_screen)
 
 clock = pygame.time.Clock()
 clock.tick(50)
 is_running = True
-halt = False
 
 readROM()
 renderscreenFull()
@@ -503,18 +495,30 @@ while is_running:
         if event.type == pygame.QUIT or (event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element ==b_quit_game):
             is_running = False
 
-        if event.type == pygame_gui.UI_BUTTON_PRESSED:
-            if event.ui_element == b_load_game:
-                readSpectrumFile()
-
+        if event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_load_game:
+            file_requester = pygame_gui.windows.UIFileDialog(pygame.Rect(MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT,WIDTH*SCALE,HEIGHT*SCALE),
+                                            gui_manager,
+                                            window_title='Open file...',
+                                            initial_file_path='./jocs/',
+                                            allow_picking_directories=True,
+                                            allow_existing_files_only=True,
+                                            visible=1,
+                                            allowed_suffixes={""})
+            gui_manager.draw_ui(main_screen)
+            
+        if event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
+            readSpectrumFile(create_resource_path(event.text))
+ 
         gui_manager.process_events(event)
 
     renderscreenDiff()
+    pygame.display.update()
+    main_screen.blit(zx_scaled, (MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT))
     gui_manager.update(time_delta)
     gui_manager.draw_ui(main_screen)
     zx_scaled = pygame.transform.scale(zx_screen,(WIDTH*SCALE, HEIGHT*SCALE))
-    main_screen.blit(zx_scaled, (MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT))
+    
 
-    pygame.display.update()
+    
 
 quit_app()
