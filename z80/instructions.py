@@ -1195,6 +1195,25 @@ class InstructionSet():
         if get_reads:
             return []
         else:
+            """
+            # https://github.com/openMSX/openMSX/blob/master/src/cpu/CPUCore.cc
+            # http://z80-heaven.wikidot.com/instructions-set:daa
+            diff = 0
+            if (registers.condition.H != 0) | ((registers.A & 0x0F) > 0x09): diff |= 0x06
+            if (registers.condition.C != 0) | (registers.A > 0x99): 
+                diff |= 0x60
+                registers.condition.C = 1
+            else: registers.condition.C = 0
+            if registers.condition.N == 0: a = (registers.A + diff) & 0xFF
+            else: a = get_8bit_twos_comp((registers.A - diff)) & 0xFF
+            registers.condition.H = ((registers.A ^ a) >> 4) & 0x01
+            registers.A = a
+            registers.condition.S = registers.A >> 7
+            registers.condition.Z = (registers.A == 0)
+            registers.condition.PV = parity(registers.A)
+            set_f5_f3_from_a(registers)
+            return []
+            """            
             # https://raine.1emulation.com/archive/dev/z80-documented.pdf
             # (The Undocumented Z80 Documented)
             hn = (registers.A & 0xF0) >> 4 # high nibble
@@ -1786,7 +1805,7 @@ class InstructionSet():
             return [registers.HL]
         else:
             a = (data[0] >> 4) | (registers.A & 0xF0)
-            hl = ((registers.HL << 4) | (registers.A & 0x0f)) & 0xFF
+            hl = ((data[0] << 4) | (registers.A & 0x0f)) & 0xFF
             registers.A = a
             registers.condition.S = a >> 7
             registers.condition.Z = a == 0
@@ -1803,7 +1822,7 @@ class InstructionSet():
             return [registers.HL]
         else:
             a = (data[0] & 0x0F) | (registers.A & 0xF0)
-            hl = ((registers.HL >> 4) | (registers.A << 4))  & 0xFF
+            hl = ((data[0] >> 4) | (registers.A << 4))  & 0xFF
             registers.A = a
             registers.condition.S = a >> 7
             registers.condition.Z = a == 0
