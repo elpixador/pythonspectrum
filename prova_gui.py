@@ -37,8 +37,8 @@ colorTable = (  # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour
 flashReversed = False
 tilechanged = [True] * 768
 keysSpectrum = { # http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/keyboard
-   0x7FFE: 0b10111111, 0xBFFE: 0b10111111, 0xDFFE: 0b10111111, 0xEFFE: 0b10111111,
-   0xF7FE: 0b10111111, 0xFBFE: 0b10111111, 0xFDFE: 0b10111111, 0xFEFE: 0b10111111
+   0x7F: 0b10111111, 0xBF: 0b10111111, 0xDF: 0b10111111, 0xEF: 0b10111111,
+   0xF7: 0b10111111, 0xFB: 0b10111111, 0xFD: 0b10111111, 0xFE: 0b10111111
 }
 
 pygameKeys = { # scancode
