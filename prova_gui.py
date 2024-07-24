@@ -1,9 +1,8 @@
 from operator import is_
 import sys, os, threading, platform
-from tkinter import *
+import tkinter 
 from tkinter import filedialog, messagebox
 from time import sleep, time
-from typing import Self
 import pygame
 # PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
 import pygame_gui
