@@ -1,12 +1,8 @@
-from operator import is_
 import sys, os, threading, platform
-import tkinter 
-from tkinter import filedialog, messagebox
 from time import sleep, time
 import pygame
 # PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
 import pygame_gui
-from pygame_gui.windows import UIFileDialog
 from pygame_gui.core.utility import create_resource_path
 
 ## Z80 CPU Emulator / https://github.com/cburbridge/z80
