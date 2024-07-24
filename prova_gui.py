@@ -457,10 +457,21 @@ while is_running:
 
     time_delta = clock.tick(60)/1000.0
     for event in pygame.event.get():
-        if event.type == pygame.QUIT or (event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element ==b_quit_game):
+
+        if event.type == pygame.KEYDOWN:
+            if event.scancode in pygameKeys:
+                k = pygameKeys[event.scancode]
+                keysSpectrum[k[0]] = keysSpectrum[k[0]] & (k[1]^0xFF)
+      
+        elif event.type == pygame.KEYUP:
+            if event.scancode in pygameKeys:
+                k = pygameKeys[event.scancode]
+                keysSpectrum[k[0]] = keysSpectrum[k[0]] | k[1]
+
+        elif event.type == pygame.QUIT or (event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element ==b_quit_game):
             is_running = False
 
-        if event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_load_game:
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_load_game:
             file_requester = pygame_gui.windows.UIFileDialog(pygame.Rect(MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT,WIDTH*SCALE,HEIGHT*SCALE),
                                             gui_manager,
                                             window_title='Open file...',
@@ -471,7 +482,7 @@ while is_running:
                                             allowed_suffixes={""})
             gui_manager.draw_ui(main_screen)
             
-        if event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
+        elif event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
             readSpectrumFile(create_resource_path(event.text))
  
         gui_manager.process_events(event)
