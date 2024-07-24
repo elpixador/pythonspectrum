@@ -1,5 +1,4 @@
 import sys, os, threading, platform
-from time import sleep, time
 import pygame
 # PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
 import pygame_gui
@@ -73,8 +72,8 @@ class Z80(io.Interruptable):
 
         if self._interrupted and self.registers.IFF:
             self._interrupted = False
-            if self.registers.HALT == 1:
-                self.registers.HALT = 2  # 0=normal, 1=waiting, 2=interrupted
+            if self.registers.HALT == True:
+                self.registers.HALT = None # False=normal, True=waiting, None=interrupted
             if self.registers.IM == 1:
                 # print ("!!! Interrupt Mode 1 !!!")
                 ins, args = self.instructions << 0xCD
@@ -386,15 +385,13 @@ def renderscreenDiff():
 
 
 def worker():
-    t = time()
-    cicles = 70908
+    cicles = 69888
 
     while is_running == True:
-        # t = time()
         ins, args = mach.step_instruction()
         cicles -= ins.tstates
         if cicles <= 0:
-            cicles += 70908
+            cicles += 69888
             mach.interrupt()
     raise Exception("Emulator Quitting...")
 

@@ -1,7 +1,6 @@
 import pygame, sys, os, threading
 from tkinter import *
 from tkinter import filedialog, messagebox
-from time import sleep, time
 
 #
 ## Z80 CPU Emulator
@@ -317,7 +316,7 @@ class Z80(io.Interruptable):
         
         if self._interrupted and self.registers.IFF:
             self._interrupted = False
-            if (self.registers.HALT == 1): self.registers.HALT = 2 # 0=normal, 1=waiting, 2=interrupted
+            if self.registers.HALT == True: self.registers.HALT = None # False=normal, True=waiting, None=interrupted
             if self.registers.IM == 1:
                 #print ("!!! Interrupt Mode 1 !!!")
                 ins, args = self.instructions << 0xCD
@@ -387,15 +386,13 @@ pygame.display.set_caption("Hello from Spectrum World")
 
 
 def worker():
-   t = time()
-   cicles = 70908
+   cicles = 69888
              
    while True:
-      # t = time()
       ins,  args =  mach.step_instruction()
       cicles -= ins.tstates
       if (cicles <= 0):
-         cicles += 70908
+         cicles += 69888
          mach.interrupt()
 
  #     print (ins.assembler(args))

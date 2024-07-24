@@ -134,7 +134,16 @@ class InstructionSet():
         else:
             ops = tuple(self._instruction_composer)
             self._instruction_composer = []
-            self._registers.R = ((self._registers.R + 1) & 0x7F) | (self._registers.R & 0x80)
+
+            r = self._registers.R
+            if (ops[0] in [0xCB, 0xED]):
+                self._registers.R = ((r + 2) & 0x7F) | (r & 0x80)
+            elif (ops[0] in [0xDD, 0xFD]):
+                if (ops[1] == 0xCB): self._registers.R = ((r + 3) & 0x7F) | (r & 0x80)
+                else: self._registers.R = ((r + 2) & 0x7F) | (r & 0x80)
+            else:
+                self._registers.R = ((r + 1) & 0x7F) | (r & 0x80)
+            
 #            print q, ops
             return q, ops
         
@@ -205,9 +214,6 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            if r == "R":
-                # Add 2 to refresh. TODO: fix
-                registers[r] += 2
             registers.A = registers[r]
             registers.condition.S = registers[r] >> 7
             registers.condition.Z = registers[r] == 0
@@ -1282,7 +1288,10 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers.A = subtract8_check_overflow(0, registers.A, registers)
+            a = registers.A
+            registers.A = subtract8(0, a, registers)
+            registers.condition.PV = (a == 0x80)
+            registers.condition.C = (a != 0x00)
             return []
 
     @instruction([(0x3F, ())], 0, "CCF", 4)
@@ -1319,11 +1328,11 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            if (registers.HALT < 2): # 0=normal, 1=waiting, 2=interrupted
-                registers.HALT = 1
-                registers.PC -= 1
+            if registers.HALT == None: # False=normal, True=waiting, None=after interruption
+                registers.HALT = False
             else:
-                registers.HALT = 0
+                registers.HALT = True
+                registers.PC -= 1
             return []
 
 
@@ -1847,12 +1856,12 @@ class InstructionSet():
             return []
         else:
             # print "Test bit ", bit
-            registers.condition.Z = (registers[reg] & (0x01 << bit)) == 0
+            val = registers[reg] & (0x01 << bit)
+            registers.condition.Z = (val == 0)
             registers.condition.H = 1
             registers.condition.N = 0
-            registers.condition.PV = registers.condition.Z
-            if bit == 7:
-                registers.condition.S = (registers[reg] & (0x01 << bit))
+            registers.condition.PV = registers.condition.Z            
+            registers.condition.S = (val >> 7)
             #if bit == 5:
                 #registers.condition.F5 = (registers[reg] & (0x01 << bit))
             #if bit == 3:
@@ -1866,12 +1875,12 @@ class InstructionSet():
         if get_reads:
             return [registers.HL]
         else:
-            registers.condition.Z = (data[0] & (0x01 << bit)) == 0
+            val = data[0] & (0x01 << bit)
+            registers.condition.Z = (val == 0)
             registers.condition.H = 1
             registers.condition.N = 0
             registers.condition.PV = registers.condition.Z
-            if bit == 7:
-                registers.condition.S = (data[0] & (0x01 << bit))
+            registers.condition.S = (val >> 7)
             set_f5_f3(registers, data[0])
             return []
 
@@ -1881,14 +1890,12 @@ class InstructionSet():
         if get_reads:
             return [registers[i]+get_8bit_twos_comp(d)]
         else:
-            registers.condition.Z = (data[0] & (0x01 << bit)) == 0
+            val = data[0] & (0x01 << bit)
+            registers.condition.Z = (val == 0)
             registers.condition.H = 1
             registers.condition.N = 0
             registers.condition.PV = registers.condition.Z
-            if bit == 7:
-                registers.condition.S = (data[0] & (0x01 << bit))
-            else:
-                registers.condition.S = 0
+            registers.condition.S = (val >> 7)
             set_f5_f3(registers, (registers[i]+get_8bit_twos_comp(d)) >> 8)
             return []
 

@@ -55,7 +55,7 @@ class Registers(dict):
 
         self["condition"] = BitAccesser(["S", "Z", "F5", "H", "F3", "PV", "N", "C"], self, "F")
         
-        self['HALT']=0 # 0=normal, 1=waiting, 2=interrupted
+        self['HALT']=False #
         self['IFF']=False  # Interrupt flip flop
         self['IFF2']=False  # NM Interrupt flip flop
         self['IM']=False   # Iterrupt mode
