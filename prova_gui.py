@@ -402,53 +402,58 @@ def init_gfx():
 # INICI
 
 ROM = "jocs/spectrum.rom"
-
 SCALE = 3
 ZX_RES = WIDTH, HEIGHT = 256, 192
 MARGIN = 60 
 UI_HEIGHT = 20
 
-clock = pygame.time.Clock()
-
-mach = Z80()
-
+# Initialize Pygame and the clock
 pygame.init()
 pygame.display.set_caption("Pythonspectrum")
-
-#this is pygame screen 
-main_screen = pygame.display.set_mode(((WIDTH+MARGIN)*SCALE, (HEIGHT+MARGIN)*SCALE+20), vsync=1)
-
-# this is the surface where the unscaled spectrum screen will be drawn
-zx_screen = pygame.Surface(ZX_RES)
-
-# this is the scaled zx spectrum screen that will be displayed
-zx_scaled = pygame.Surface((WIDTH*SCALE, HEIGHT*SCALE))
-
-# this is where we are going to draw the UI
-gui_manager = pygame_gui.UIManager(((WIDTH+MARGIN)*SCALE, (HEIGHT+MARGIN)*SCALE+20))
-b_load_game = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((2, 1), (90, 19)), text='Load Game', manager=gui_manager)
-b_quit_game = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((92, 1), (90, 19)), text='Quit Game', manager=gui_manager)
-
-
-
-gui_manager.draw_ui(main_screen)
+pygame.display.set_icon(pygame.image.load("./window.png"))
 
 clock = pygame.time.Clock()
+
+# Initialize the Z80 machine
+mach = Z80()
+
+# Set up the main screen with scaling
+SCREEN_WIDTH = (WIDTH + MARGIN) * SCALE
+SCREEN_HEIGHT = (HEIGHT + MARGIN) * SCALE + UI_HEIGHT
+main_screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT), vsync=0)
+
+# Set up the ZX Spectrum screen surfaces (unscaled and scaled)
+zx_screen = pygame.Surface(ZX_RES) 
+zx_scaled = pygame.Surface((WIDTH * SCALE, HEIGHT * SCALE)) 
+
+# Set up the UI manager and elements
+gui_manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT))
+b_load_game = pygame_gui.elements.UIButton(
+    relative_rect=pygame.Rect((2, 1), (90, 19)), text='Load Game', manager=gui_manager)
+b_quit_game = pygame_gui.elements.UIButton(
+    relative_rect=pygame.Rect((92, 1), (90, 19)), text='Quit Game', manager=gui_manager)
+
+# Draw the initial UI
+gui_manager.draw_ui(main_screen)
+
 clock.tick(50)
 is_running = True
 
 readROM()
 renderscreenFull()
 
-print("Platform is: ",platform.system())
+print("Platform is: ", platform.system())
 
+# Start worker thread
 thread = threading.Thread(target=worker, daemon=True)
 thread.start()
 
 conta = 0
 
+
+# Main loop
 while is_running:
-    conta = conta + 1
+    conta += 1
     if (conta & 0b00011111) == 0:
         flashReversed = not flashReversed
         for p in range(0, 768):
@@ -457,7 +462,6 @@ while is_running:
 
     time_delta = clock.tick(60)/1000.0
     for event in pygame.event.get():
-
         if event.type == pygame.KEYDOWN:
             if event.scancode in pygameKeys:
                 k = pygameKeys[event.scancode]
@@ -472,14 +476,16 @@ while is_running:
             is_running = False
 
         elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_load_game:
-            file_requester = pygame_gui.windows.UIFileDialog(pygame.Rect(MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT,WIDTH*SCALE,HEIGHT*SCALE),
-                                            gui_manager,
-                                            window_title='Open file...',
-                                            initial_file_path='./jocs/',
-                                            allow_picking_directories=True,
-                                            allow_existing_files_only=True,
-                                            visible=1,
-                                            allowed_suffixes={""})
+            file_requester = pygame_gui.windows.UIFileDialog(
+                pygame.Rect(MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT,WIDTH*SCALE,HEIGHT*SCALE),
+                gui_manager,
+                window_title='Open file...',
+                initial_file_path='./jocs/',
+                allow_picking_directories=True,
+                allow_existing_files_only=True,
+                visible=1,
+                allowed_suffixes={""}
+            )
             gui_manager.draw_ui(main_screen)
             
         elif event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
@@ -488,13 +494,13 @@ while is_running:
         gui_manager.process_events(event)
 
     renderscreenDiff()
-    pygame.display.update()
+    
+    # Update only changed parts of the display
+    zx_scaled = pygame.transform.scale(zx_screen, (WIDTH * SCALE, HEIGHT * SCALE))
     main_screen.blit(zx_scaled, (MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT))
     gui_manager.update(time_delta)
     gui_manager.draw_ui(main_screen)
-    zx_scaled = pygame.transform.scale(zx_screen,(WIDTH*SCALE, HEIGHT*SCALE))
-    
 
+    pygame.display.update()
     
-
 quit_app()
