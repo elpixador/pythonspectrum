@@ -422,6 +422,7 @@ mach = Z80()
 SCREEN_WIDTH = (WIDTH + MARGIN) * SCALE
 SCREEN_HEIGHT = (HEIGHT + MARGIN) * SCALE + UI_HEIGHT
 main_screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT), vsync=0)
+main_screen.fill((0,0,255))
 
 # Set up the ZX Spectrum screen surfaces (unscaled and scaled)
 zx_screen = pygame.Surface(ZX_RES) 
