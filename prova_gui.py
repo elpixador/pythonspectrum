@@ -560,6 +560,7 @@ while is_running:
 
         elif event.type == pygame.QUIT or (event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element ==b_quit_game):
             worker.stop()
+            quit_app()
 
         elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_load_game:
             file_requester = pygame_gui.windows.UIFileDialog(
