@@ -159,6 +159,49 @@ class Z80(io.Interruptable):
 
         return ins, args
 
+class Worker:
+    def __init__(self):
+        self.stop_event = threading.Event()
+        self.is_running = threading.Event()
+        self.thread = None
+
+    def worker_loop(self):
+        print("Worker function started")
+        cicles = 69888
+        while not self.stop_event.is_set():
+            ins, args = mach.step_instruction()
+            cicles -= ins.tstates
+            if cicles <= 0:
+                cicles += 69888
+                mach.interrupt()
+            # Yielding control to avoid busy-waiting (optional, based on your use case)
+        print("Worker function stopped")
+    
+    def start(self):
+        if self.thread is not None and self.thread.is_alive():
+            print("Worker is already running")
+            return
+
+        self.stop_event.clear()
+        self.is_running.set()
+        self.thread = threading.Thread(target=self.worker_loop, daemon=True)  # Daemon thread
+        self.thread.start()
+        print("Worker started")
+
+    def stop(self):
+        self.stop_event.set()
+        self.is_running.clear()
+        if self.thread is not None:
+            self.thread.join()
+        print("Worker stopped")
+
+    def restart(self):
+        self.stop()
+        self.start()
+        print("Worker restarted")
+
+
+# Funcions
 def quit_app():
     print("Emulator quitting...")
     pygame.quit()
@@ -210,12 +253,8 @@ def memFromPackedFile(aFile, aInici, aLongitud):
 
 
 def readSpectrumFile(fichero):
-    global thread, is_running
-
     if fichero:
-        is_running = False
-        thread.join()
-
+        worker.stop()
 
         extensio = os.path.splitext(fichero)[1]
         nom = os.path.basename(fichero)
@@ -358,14 +397,8 @@ def readSpectrumFile(fichero):
             memFromFile(f)
             f.close()
 
-    else:
-        pass
-
     renderscreenFull()
-
-    is_running = True
-    thread = threading.Thread(target=worker, daemon=True)
-    thread.start()
+    worker.start()
 
 
 def decodecolor(atribut):
@@ -427,7 +460,7 @@ def renderscreenDiff():
             tilechanged[p] = False
 
 
-def worker():
+"""def worker():
     cicles = 69888
 
     while is_running == True:
@@ -435,7 +468,7 @@ def worker():
         cicles -= ins.tstates
         if cicles <= 0:
             cicles += 69888
-            mach.interrupt()
+            mach.interrupt()"""
    
 
 def init_gfx():
@@ -498,8 +531,12 @@ renderscreenFull()
 print("Platform is: ", platform.system())
 
 # Start worker thread
-thread = threading.Thread(target=worker, daemon=True)
-thread.start()
+
+#thread = threading.Thread(target=worker, daemon=True)
+#thread.start()
+
+worker = Worker()
+worker.start()  # Start the worker
 
 conta = 0
 
