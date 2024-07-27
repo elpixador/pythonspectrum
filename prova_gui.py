@@ -1,4 +1,5 @@
 import sys, os, threading, platform
+import numpy
 import pygame
 # PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
 import pygame_gui
@@ -117,16 +118,30 @@ class Z80(io.Interruptable):
                 address = adr & 0xFF
 
                 if (address == 0xFE): # es el port 254
-                 #Bit   7   6   5   4   3   2   1   0
-                 #  +-------------------------------+
-                 #  |   |   |   | E | M |   Border  |
-                 #  +-------------------------------+
+                    #Bit   7   6   5   4   3   2   1   0
+                    #  +-------------------------------+
+                    #  |   |   |   | E | M |   Border  |
+                    #  +-------------------------------+
 
-                 # print((i[1] & 0b00010000) >> 4) #filtrem el bit de audio output per generar el so
-                 #cal cridar la funció que toca per el so
-                 
+                    # print((i[1] & 0b00010000) >> 4) #filtrem el bit de audio output per generar el so
+                    #cal cridar la funció que toca per el so
+
+                    audioword = 0x0000
+                    if((i[1] & 0b00010000) >> 4):
+                        audioword = 255
+                    
+
+                    for s in range(1):
+                         bufaudio[s][0] = audioword  # left
+                         bufaudio[s][1] = audioword  # right
+
+                    sound = pygame.sndarray.make_sound(bufaudio)
+                    sound.play()
+
+
+                 #festio del color del borde
                     border = (i[1] & 0b00000111) 
-                    main_screen.fill(colorTable[0][border])
+                 #   main_screen.fill(colorTable[0][border])
                  
                 #iomap.address[address].write.emit(address, i[1])
                 #self._iomap.address[address].write(address, i[1])
@@ -435,12 +450,19 @@ ZX_RES = WIDTH, HEIGHT = 256, 192
 MARGIN = 60 
 UI_HEIGHT = 20
 
+bits = 16
 # Initialize Pygame and the clock
+
+pygame.mixer.pre_init(44100, bits, 2)
 pygame.init()
 pygame.display.set_caption("Pythonspectrum")
 pygame.display.set_icon(pygame.image.load("./window.png"))
 
 clock = pygame.time.Clock()
+
+
+bufaudio = numpy.zeros((1, 2), dtype = numpy.int16)
+
 
 # Initialize the Z80 machine
 mach = Z80()
