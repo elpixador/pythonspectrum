@@ -115,9 +115,22 @@ class Z80(io.Interruptable):
             adr = i[0]
             if adr >= 0x10000:
                 address = adr & 0xFF
-                # iomap.address[address].write.emit(address, i[1])
-                ##self._iomap.address[address].write(address, i[1])
-                # print (chr(i[1]))
+
+                if (address == 0xFE): # es el port 254
+                 #Bit   7   6   5   4   3   2   1   0
+                 #  +-------------------------------+
+                 #  |   |   |   | E | M |   Border  |
+                 #  +-------------------------------+
+
+                 # print((i[1] & 0b00010000) >> 4) #filtrem el bit de audio output per generar el so
+                 #cal cridar la funció que toca per el so
+                 
+                    border = (i[1] & 0b00000111) 
+                    main_screen.fill(colorTable[0][border])
+                 
+                #iomap.address[address].write.emit(address, i[1])
+                #self._iomap.address[address].write(address, i[1])
+                #print (chr(i[1]))
             else:
                if (adr > 16383): # Només escrivim a la RAM
                   # Caché per a renderscreenDiff
