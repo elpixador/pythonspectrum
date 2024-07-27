@@ -182,8 +182,13 @@ def memFromPackedFile(aFile, aInici, aLongitud):
 
 
 def readSpectrumFile(fichero):
+    global thread, is_running
 
     if fichero:
+        is_running = False
+        thread.join()
+
+
         extensio = os.path.splitext(fichero)[1]
         nom = os.path.basename(fichero)
         print("file to load is: " + nom)
@@ -325,6 +330,10 @@ def readSpectrumFile(fichero):
 
     renderscreenFull()
 
+    is_running = True
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+
 
 def decodecolor(atribut):
     # http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/screen-memory-layout
@@ -394,7 +403,7 @@ def worker():
         if cicles <= 0:
             cicles += 69888
             mach.interrupt()
-    raise Exception("Emulator Quitting...")
+   
 
 def init_gfx():
     pass
