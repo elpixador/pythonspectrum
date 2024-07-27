@@ -128,8 +128,9 @@ class Z80(io.Interruptable):
 
                     audioword = 0x0000
                     if((i[1] & 0b00010000) >> 4):
-                        audioword = 255
-                    
+                        audioword = 32767
+                    else:
+                        audioword = -1
 
                     for s in range(1):
                          bufaudio[s][0] = audioword  # left
@@ -483,7 +484,7 @@ UI_HEIGHT = 20
 bits = 16
 # Initialize Pygame and the clock
 
-pygame.mixer.pre_init(44100, bits, 2)
+pygame.mixer.pre_init(344100, bits, 2)
 pygame.init()
 pygame.display.set_caption("Pythonspectrum")
 pygame.display.set_icon(pygame.image.load("./window.png"))
