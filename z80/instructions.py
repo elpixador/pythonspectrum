@@ -1323,7 +1323,7 @@ class InstructionSet():
         else:
             registers.HALT = True
             registers.PC -= 1
-        return []
+            return []
 
 
     @instruction([(0xF3, ())], 0, "DI", 4)

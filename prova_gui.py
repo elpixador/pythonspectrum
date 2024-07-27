@@ -113,7 +113,7 @@ class Z80(io.Interruptable):
         wrt = ins.execute(data, args)
         for i in wrt:
             adr = i[0]
-            if adr > 0x10000:
+            if adr >= 0x10000:
                 address = adr & 0xFF
                 # iomap.address[address].write.emit(address, i[1])
                 ##self._iomap.address[address].write(address, i[1])
@@ -211,7 +211,7 @@ def readSpectrumFile(fichero):
             mach.registers.R = byteFromFile(f) & 0x7F
             b = byteFromFile(f) # Bordercolor etc
             mach.registers.R = mach.registers.R | ((b & 0x01) << 7)
-            isPacked = (b & 0b00100000 >> 5)
+            isPacked = (b & 0b00100000) >> 5
             mach.registers.E = byteFromFile(f)
             mach.registers.D = byteFromFile(f)
             mach.registers.C_ = byteFromFile(f)
