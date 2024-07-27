@@ -215,6 +215,9 @@ def readSpectrumFile(fichero):
             mach.registers.I = byteFromFile(f)
             mach.registers.R = byteFromFile(f) & 0x7F
             b = byteFromFile(f) # Bordercolor etc
+            border = (b & 0b00001110 ) > 1
+            main_screen.fill(colorTable[0][border])
+
             mach.registers.R = mach.registers.R | ((b & 0x01) << 7)
             isPacked = (b & 0b00100000) >> 5
             mach.registers.E = byteFromFile(f)
@@ -275,7 +278,8 @@ def readSpectrumFile(fichero):
             mach.registers.A = byteFromFile(f)
             mach.registers.SP = byteFromFile(f) | (byteFromFile(f) << 8)
             mach.registers.IM = byteFromFile(f) & 0x03
-            byteFromFile(f)  # Bordercolor
+            border = byteFromFile(f)  # Bordercolor
+            main_screen.fill(colorTable[0][border])
             memFromFile(f)
             f.close()
             mach.registers.PC = (
@@ -312,7 +316,8 @@ def readSpectrumFile(fichero):
             mach.registers.PC = byteFromFile(f) | (byteFromFile(f) << 8)
             byteFromFile(f)  # reserved
             byteFromFile(f)  # reserved
-            byteFromFile(f)  # Border color
+            border = byteFromFile(f)  # Bordercolor
+            main_screen.fill(colorTable[0][border])
             byteFromFile(f)  # reserved
             b = byteFromFile(f)  # status word low
             mach.registers.IFF = b & 1
@@ -427,11 +432,13 @@ clock = pygame.time.Clock()
 # Initialize the Z80 machine
 mach = Z80()
 
+border = 7 # color inicial
 # Set up the main screen with scaling
 SCREEN_WIDTH = (WIDTH + MARGIN) * SCALE
 SCREEN_HEIGHT = (HEIGHT + MARGIN) * SCALE + UI_HEIGHT
 main_screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT), vsync=0)
-main_screen.fill((0,0,255))
+#main_screen.fill((255,255,255))
+main_screen.fill(colorTable[0][border])
 
 # Set up the ZX Spectrum screen surfaces (unscaled and scaled)
 zx_screen = pygame.Surface(ZX_RES) 
