@@ -162,10 +162,9 @@ class Z80(io.Interruptable):
 class Worker:
     def __init__(self):
         self.stop_event = threading.Event()
-        self.is_running = threading.Event()
         self.thread = None
 
-    def worker_loop(self):
+    def loop(self):
         print("Worker function started")
         cicles = 69888
         while not self.stop_event.is_set():
@@ -174,7 +173,6 @@ class Worker:
             if cicles <= 0:
                 cicles += 69888
                 mach.interrupt()
-            # Yielding control to avoid busy-waiting (optional, based on your use case)
         print("Worker function stopped")
     
     def start(self):
@@ -183,14 +181,12 @@ class Worker:
             return
 
         self.stop_event.clear()
-        self.is_running.set()
-        self.thread = threading.Thread(target=self.worker_loop, daemon=True)  # Daemon thread
+        self.thread = threading.Thread(target=self.loop, daemon=True) 
         self.thread.start()
         print("Worker started")
 
     def stop(self):
         self.stop_event.set()
-        self.is_running.clear()
         if self.thread is not None:
             self.thread.join()
         print("Worker stopped")
@@ -204,6 +200,7 @@ class Worker:
 # Funcions
 def quit_app():
     print("Emulator quitting...")
+    worker.stop()
     pygame.quit()
     sys.exit()
 
@@ -540,7 +537,6 @@ worker.start()  # Start the worker
 
 conta = 0
 
-
 # Main loop
 while is_running:
     conta += 1
@@ -563,7 +559,7 @@ while is_running:
                 keysSpectrum[k[0]] = keysSpectrum[k[0]] | k[1]
 
         elif event.type == pygame.QUIT or (event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element ==b_quit_game):
-            is_running = False
+            worker.stop()
 
         elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_load_game:
             file_requester = pygame_gui.windows.UIFileDialog(
