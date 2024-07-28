@@ -78,9 +78,10 @@ class Z80(io.Interruptable):
                 self.registers.PC = util.inc16(self.registers.PC)
             if self.registers.IM == 1:
                 # print ("!!! Interrupt Mode 1 !!!")
-                ins, args = self.instructions << 0xCD
-                ins, args = self.instructions << 0x38
-                ins, args = self.instructions << 0x00
+                #ins, args = self.instructions << 0xCD
+                #ins, args = self.instructions << 0x38
+                #ins, args = self.instructions << 0x00
+                ins, args = self.instructions << 0xFF
             elif self.registers.IM == 2:
                 # print ("!!! Interrupt Mode 2 !!!")
                 imadr = (self.registers.I << 8) | 0xFF
@@ -169,7 +170,7 @@ class Worker:
         print("Worker function started")
         cicles = 69888
         while not self.stop_event.is_set():
-            ins, args = mach.step_instruction()
+            ins, _ = mach.step_instruction()
             cicles -= ins.tstates
             if cicles <= 0:
                 cicles += 69888
@@ -303,13 +304,17 @@ def readSpectrumFile(fichero):
             if (mach.registers.PC == 0): # Versions 2 i 3 del format
                b = byteFromFile(f) | (byteFromFile(f) << 8)
                mach.registers.PC = byteFromFile(f) | (byteFromFile(f) << 8)
-               f.read(b-2) # Skip b-2 bytes
+               print('Hardware mode: '+str(byteFromFile(f)))
+               f.read(b-3) # Skip b-3 bytes
                while (sz > f.tell()):
                   lon = byteFromFile(f) | (byteFromFile(f) << 8) # length of compressed data
                   b = byteFromFile(f) # page
                   if (b == 4): memFromPackedFile(f, 0x8000, lon)
                   elif (b == 5): memFromPackedFile(f, 0xC000, lon)
                   elif (b == 8): memFromPackedFile(f, 0x4000, lon)
+                  else: 
+                     print('Skipping page: '+str(b))
+                     memFromPackedFile(f, 0xFFFFF, lon)
             else: # Versió 1 del format
                if (isPacked): memFromPackedFile(f, 16384, 49152)
                else: memFromFile(f)
