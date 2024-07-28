@@ -1369,7 +1369,7 @@ class InstructionSet():
             registers.condition.F3 = dummy_reg.condition.F3
             registers.condition.F5 = dummy_reg.condition.F5
             registers.condition.N = 0
-            registers.condition.C = val > 0xFFFF
+            registers.condition.C = ((val & 0x10000) != 0)
             registers.HL = val & 0xFFFF
             return []
 
@@ -1408,7 +1408,7 @@ class InstructionSet():
             else:
                 registers.condition.PV = 0
         
-            registers.condition.C = res > 0xFFFF or res < 0
+            registers.condition.C = ((res & 0x10000) != 0)
             registers.HL = res &  0xFFFF
 
             return []
@@ -1426,7 +1426,7 @@ class InstructionSet():
             else:
                 registers.condition.H = 0
             registers.condition.N = 0
-            registers.condition.C = val > 0xFFFF
+            registers.condition.C = ((val & 0x10000) != 0)
             set_f5_f3(registers, (registers[i] >>8)+(registers[r]>>8))
             registers[i] = val & 0xFFFF
             return []

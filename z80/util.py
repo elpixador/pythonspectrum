@@ -64,7 +64,7 @@ def subtract8(a, b, registers, S=True, N=True, Z=True,
         else:
             registers.condition.PV = 0
     if C:
-        registers.condition.C = res > 0xFF or res < 0
+        registers.condition.C = ((res & 0x100) != 0)
     return res &  0xFF
     
 def subtract8_check_overflow(a, b, registers):
@@ -91,7 +91,7 @@ def add8(a, b, registers, S=True, Z=True, H=True,
     if N:
         registers.condition.N = 0
     if C:
-        registers.condition.C = res > 0xFF or res < 0
+        registers.condition.C = ((res & 0x100) != 0)
     if F3:
         registers.condition.F3 = res & 0x08
     if F5:
@@ -113,7 +113,7 @@ def add16(a, b, registers):
     else:
         registers.condition.PV = 0
     registers.condition.N = 0
-    registers.condition.C = res >> 0xFFFF or res < 0
+    registers.condition.C = ((res & 0x10000) != 0)
     
     registers.condition.F3 = res & 0x0800
     registers.condition.F5 = res & 0x2000
@@ -138,7 +138,7 @@ def subtract16(a, b, registers):
     else:
         registers.condition.PV = 0
 
-    registers.condition.C = res > 0xFFFF or res < 0
+    registers.condition.C = ((res & 0x10000) != 0)
     return res &  0xFFFF
 
 def inc16(val):
