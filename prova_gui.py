@@ -483,7 +483,7 @@ def initgfx():
     b_load_game = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect((startingPoint, 1), (buttonWidth, buttonHeight)), text='Load Game', manager=gui_manager)
     b_scale_game = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((startingPoint+buttonWidth+gap, 1), (buttonWidth, buttonHeight)), text='Scale', manager=gui_manager)
+        relative_rect=pygame.Rect((startingPoint+buttonWidth+gap, 1), (buttonWidth, buttonHeight)), text='Scale: ' + str(SCALE), manager=gui_manager)
     b_quit_game = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect((startingPoint+((buttonWidth+gap)*2), 1), (buttonWidth, buttonHeight)), text='Quit Game', manager=gui_manager)
     
