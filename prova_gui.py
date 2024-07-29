@@ -477,7 +477,7 @@ def initgfx():
     buttonHeight = 20
     numButtons = 3
     gap = 2
-    startingPoint = (SCREEN_WIDTH - ((buttonWidth * numButtons) + (gap * numButtons - 1))) / 2
+    startingPoint = (SCREEN_WIDTH - ((buttonWidth * numButtons) + (gap * (numButtons - 1)))) / 2
 
     global b_load_game, b_scale_game, b_quit_game
     b_load_game = pygame_gui.elements.UIButton(
