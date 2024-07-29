@@ -167,7 +167,6 @@ class Worker:
         self.thread = None
 
     def loop(self):
-        print("Worker function started")
         cicles = 69888
         while not self.stop_event.is_set():
             ins, _ = mach.step_instruction()
@@ -175,7 +174,6 @@ class Worker:
             if cicles <= 0:
                 cicles += 69888
                 mach.interrupt()
-        print("Worker function stopped")
     
     def start(self):
         if self.thread is not None and self.thread.is_alive():
@@ -197,7 +195,6 @@ class Worker:
         self.stop()
         self.start()
         print("Worker restarted")
-
 
 # Funcions
 def quit_app():
@@ -462,68 +459,74 @@ def renderscreenDiff():
                 y += 1
             tilechanged[p] = False
 
+def initgfx():
+    pygame.init()
+    pygame.display.set_caption("Pythonspectrum")
+    pygame.display.set_icon(pygame.image.load("./window.png"))
 
-"""def worker():
-    cicles = 69888
+    global SCREEN_WIDTH, SCREEN_HEIGHT, main_screen
+    SCREEN_WIDTH = (WIDTH + MARGIN) * SCALE
+    SCREEN_HEIGHT = (HEIGHT + MARGIN) * SCALE + UI_HEIGHT
+    # Set up the main screen with scaling
+    main_screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT), vsync=0)
 
-    while is_running == True:
-        ins, args = mach.step_instruction()
-        cicles -= ins.tstates
-        if cicles <= 0:
-            cicles += 69888
-            mach.interrupt()"""
-   
+    # Set up the UI manager and elements
+    global gui_manager
+    gui_manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT))
+    buttonWidth = 90
+    buttonHeight = 20
+    numButtons = 3
+    gap = 2
+    startingPoint = (SCREEN_WIDTH - ((buttonWidth * numButtons) + (gap * numButtons - 1))) / 2
 
-def init_gfx():
-    pass
+    global b_load_game, b_scale_game, b_quit_game
+    b_load_game = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((startingPoint, 1), (buttonWidth, buttonHeight)), text='Load Game', manager=gui_manager)
+    b_scale_game = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((startingPoint+buttonWidth+gap, 1), (buttonWidth, buttonHeight)), text='Scale', manager=gui_manager)
+    b_quit_game = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((startingPoint+((buttonWidth+gap)*2), 1), (buttonWidth, buttonHeight)), text='Quit Game', manager=gui_manager)
+    
+    main_screen.fill(colorTable[0][border])
+    gui_manager.draw_ui(main_screen)
+
+"""    # TODO
+    # pintem un fons maco on posarem els botonets
+    fons = pygame.image.load('zxspectrum.png').convert()
+    fons = pygame.transform.scale(fons, (SCREEN_WIDTH, buttonHeight))
+    rectangle = pygame.Rect(1,1,SCREEN_WIDTH,buttonHeight)
+    main_screen.blit(fons,rectangle)
+    pygame.display.update()"""
 
 
 # INICI
 
+print("Platform is: ", platform.system())
 ROM = "jocs/spectrum.rom"
 SCALE = 3
+MAXSCALE = 5
 ZX_RES = WIDTH, HEIGHT = 256, 192
 MARGIN = 60 
 UI_HEIGHT = 20
 
 bits = 16
-# Initialize Pygame and the clock
 
 pygame.mixer.pre_init(344100, bits, 2)
-pygame.init()
-pygame.display.set_caption("Pythonspectrum")
-pygame.display.set_icon(pygame.image.load("./window.png"))
-
-clock = pygame.time.Clock()
-
-
 bufaudio = numpy.zeros((1, 2), dtype = numpy.int16)
 
+# Initialize Pygame and the clock
+clock = pygame.time.Clock()
 
 # Initialize the Z80 machine
 mach = Z80()
 
+# Initialize graphics and GUI
 border = 7 # color inicial
-# Set up the main screen with scaling
-SCREEN_WIDTH = (WIDTH + MARGIN) * SCALE
-SCREEN_HEIGHT = (HEIGHT + MARGIN) * SCALE + UI_HEIGHT
-main_screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT), vsync=0)
-#main_screen.fill((255,255,255))
-main_screen.fill(colorTable[0][border])
+initgfx()
 
 # Set up the ZX Spectrum screen surfaces (unscaled and scaled)
 zx_screen = pygame.Surface(ZX_RES) 
 zx_scaled = pygame.Surface((WIDTH * SCALE, HEIGHT * SCALE)) 
-
-# Set up the UI manager and elements
-gui_manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT))
-b_load_game = pygame_gui.elements.UIButton(
-    relative_rect=pygame.Rect((2, 1), (90, 19)), text='Load Game', manager=gui_manager)
-b_quit_game = pygame_gui.elements.UIButton(
-    relative_rect=pygame.Rect((92, 1), (90, 19)), text='Quit Game', manager=gui_manager)
-
-# Draw the initial UI
-gui_manager.draw_ui(main_screen)
 
 clock.tick(50)
 is_running = True
@@ -531,15 +534,9 @@ is_running = True
 readROM()
 renderscreenFull()
 
-print("Platform is: ", platform.system())
-
 # Start worker thread
-
-#thread = threading.Thread(target=worker, daemon=True)
-#thread.start()
-
 worker = Worker()
-worker.start()  # Start the worker
+worker.start() 
 
 conta = 0
 
@@ -569,6 +566,7 @@ while is_running:
             quit_app()
 
         elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_load_game:
+            is_running = False
             file_requester = pygame_gui.windows.UIFileDialog(
                 pygame.Rect(MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT,WIDTH*SCALE,HEIGHT*SCALE),
                 gui_manager,
@@ -580,7 +578,16 @@ while is_running:
                 allowed_suffixes={""}
             )
             gui_manager.draw_ui(main_screen)
+            is_running = True
             
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_scale_game:
+            is_running = False
+            SCALE += 1
+            if SCALE == MAXSCALE+1:
+                SCALE = 1
+            initgfx()
+            is_running = True
+
         elif event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
             readSpectrumFile(create_resource_path(event.text))
  
