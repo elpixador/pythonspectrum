@@ -120,15 +120,6 @@ class InstructionSet():
         self._composer_instruction = None
         self._composer_len = 1
         
-        
-    def __getitem__(self, ins):
-        if self.is_two_parter(ins):
-            return self._instructions[ins]
-        else:
-            if ins in self._instructions[0]: 
-                return self._instructions[0][ins]
-            raise AttributeError("Unknown opcode")
-
     def __lshift__(self, op):
         self._instruction_composer.append(op)
         q = self._instructions
@@ -146,8 +137,6 @@ class InstructionSet():
     def reset_composer(self):
         self._instruction_composer = []
         
-    def is_two_parter(self, ins):
-        return ins in self._instructions
 
     #----------------------------------------------------------------------
 
@@ -211,7 +200,7 @@ class InstructionSet():
             return []
         else:
             registers.A = registers[r]
-            registers.condition.S = registers[r] >> 7
+            registers.condition.S = registers[r] & 0x80
             registers.condition.Z = registers[r] == 0
             registers.condition.H = 0
             registers.condition.PV = registers.IFF2
@@ -568,10 +557,8 @@ class InstructionSet():
             registers.E = de & 0xFF
 
             registers.condition.H = 0
-            if bc != 0:
-                registers.condition.PV = 1
-            else:
-                registers.condition.PV = 0
+            registers.condition.PV = (bc != 0)
+
             registers.condition.N = 0
             registers.condition.F3 = (registers.A + data[0]) & 0x08
             registers.condition.F5 = (registers.A + data[0]) & 0x02
@@ -600,7 +587,8 @@ class InstructionSet():
 
             registers.condition.H = 0
             if bc != 0:
-                registers.PC -= 2
+                registers.PC = dec16(registers.PC)
+                registers.PC = dec16(registers.PC)
                 instruction.tstates = 21
             else:
                 instruction.tstates = 16
@@ -634,10 +622,7 @@ class InstructionSet():
             registers.E = de & 0xFF
 
             registers.condition.H = 0
-            if bc != 0:
-                registers.condition.PV = 1
-            else:
-                registers.condition.PV = 0
+            registers.condition.PV = (bc != 0)
             registers.condition.N = 0
             registers.condition.F3 = (registers.A + data[0]) & 0x08
             registers.condition.F5 = (registers.A + data[0]) & 0x02
@@ -666,7 +651,8 @@ class InstructionSet():
 
             registers.condition.H = 0
             if bc != 0:
-                registers.PC -= 2
+                registers.PC = dec16(registers.PC)
+                registers.PC = dec16(registers.PC)
                 instruction.tstates = 21
             else:
                 instruction.tstates = 16
@@ -686,7 +672,7 @@ class InstructionSet():
             registers.HL = inc16(registers.HL)
             registers.BC = dec16(registers.BC)
 
-            subtract8(registers.A, data[0], registers)
+            subtract8(registers.A, data[0], 0, registers)
             registers.condition.PV = registers.BC != 0
             # F3 is bit 3 of (A - (HL) - H), H 
             # F5 is bit 1 of (A - (HL) - H), H a
@@ -703,10 +689,11 @@ class InstructionSet():
             registers.HL = inc16(registers.HL)
             registers.BC = dec16(registers.BC)
 
-            res = subtract8(registers.A, data[0], registers)
+            res = subtract8(registers.A, data[0], 0, registers)
 
             if registers.BC != 0 and res != 0:
-                registers.PC -= 2
+                registers.PC = dec16(registers.PC)
+                registers.PC = dec16(registers.PC)
                 instruction.tstates = 21
             else:
                 instruction.tstates = 16
@@ -724,7 +711,7 @@ class InstructionSet():
             registers.HL = dec16(registers.HL)
             registers.BC = dec16(registers.BC)
 
-            subtract8(registers.A, data[0], registers)
+            subtract8(registers.A, data[0], 0, registers)
             registers.condition.PV = registers.BC != 0
             f5f3 = registers.A - data[0] -  registers.condition.H
             registers.condition.F5 = f5f3 & 0x02
@@ -739,10 +726,11 @@ class InstructionSet():
             registers.HL = dec16(registers.HL)
             registers.BC = dec16(registers.BC)
 
-            res = subtract8(registers.A, data[0], registers)
+            res = subtract8(registers.A, data[0], 0, registers)
 
             if registers.BC != 0 and res != 0:
-                registers.PC -= 2
+                registers.PC = dec16(registers.PC)
+                registers.PC = dec16(registers.PC)
                 instruction.tstates = 21
             else:
                 instruction.tstates = 16
@@ -769,7 +757,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers.A = add8(registers.A, registers[r], registers)
+            registers.A = add8(registers.A, registers[r], 0, registers)
             return []
 
     @instruction([([0xC6, '-'], ())], 1, "ADD A, {0:X}H", 7)
@@ -777,7 +765,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers.A = add8(registers.A, n, registers)
+            registers.A = add8(registers.A, n, 0, registers)
             return []
 
 
@@ -786,7 +774,7 @@ class InstructionSet():
         if get_reads:
             return [registers.HL]
         else:
-            registers.A = add8(registers.A, data[0], registers)
+            registers.A = add8(registers.A, data[0], 0, registers)
             return []
 
     @instruction([([0xDD, 0x86, '-'], ("IX",)),
@@ -795,7 +783,7 @@ class InstructionSet():
         if get_reads:
             return [registers[i] + get_8bit_twos_comp(d)]
         else:
-            registers.A = add8(registers.A, data[0], registers)
+            registers.A = add8(registers.A, data[0], 0, registers)
             return []
 
     #---- ADC ----
@@ -812,7 +800,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers.A = add8(registers.A + registers.condition.C, registers[r], registers)
+            registers.A = add8(registers.A, registers[r], registers.condition.C, registers)
             return []
 
     @instruction([([0xCE, '-'], ())], 1, "ADC A, {0:X}H", 7)
@@ -820,7 +808,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers.A = add8(registers.A + registers.condition.C, n, registers)
+            registers.A = add8(registers.A, n, registers.condition.C, registers)
             return []
 
 
@@ -829,7 +817,7 @@ class InstructionSet():
         if get_reads:
             return [registers.HL]
         else:
-            registers.A = add8(registers.A + registers.condition.C, data[0], registers)
+            registers.A = add8(registers.A, data[0], registers.condition.C, registers)
             return []
 
     @instruction([([0xDD, 0x8E, '-'], ("IX",)),
@@ -838,7 +826,7 @@ class InstructionSet():
         if get_reads:
             return [registers[i] + get_8bit_twos_comp(d)]
         else:
-            registers.A = add8(registers.A + registers.condition.C, data[0], registers)
+            registers.A = add8(registers.A, data[0], registers.condition.C, registers)
             return []
 
     #---- SUB ----
@@ -855,7 +843,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers.A = subtract8_check_overflow(registers.A, registers[r], registers)
+            registers.A = subtract8_check_overflow(registers.A, registers[r], 0, registers)
             return []
 
     @instruction([([0xD6, '-'], ())], 1, "SUB A, {0:X}H", 7)
@@ -863,7 +851,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers.A = subtract8_check_overflow(registers.A, n, registers)
+            registers.A = subtract8_check_overflow(registers.A, n, 0, registers)
             return []
 
 
@@ -872,7 +860,7 @@ class InstructionSet():
         if get_reads:
             return [registers.HL]
         else:
-            registers.A = subtract8_check_overflow(registers.A, data[0], registers)
+            registers.A = subtract8_check_overflow(registers.A, data[0], 0, registers)
             return []
 
     @instruction([([0xDD, 0x96, '-'], ("IX",)),
@@ -881,7 +869,7 @@ class InstructionSet():
         if get_reads:
             return [registers[i] + get_8bit_twos_comp(d)]
         else:
-            registers.A = subtract8_check_overflow(registers.A, data[0], registers)
+            registers.A = subtract8_check_overflow(registers.A, data[0], 0, registers)
             return []
 
     #---- SBC ----
@@ -898,7 +886,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers.A = subtract8_check_overflow(registers.A - registers.condition.C, registers[r], registers)
+            registers.A = subtract8_check_overflow(registers.A, registers[r], registers.condition.C, registers)
             return []
 
     @instruction([([0xDE, '-'], ())], 1, "SBC A, {0:X}H", 7)
@@ -906,7 +894,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers.A = subtract8_check_overflow(registers.A - registers.condition.C, n, registers)
+            registers.A = subtract8_check_overflow(registers.A, n, registers.condition.C, registers)
             return []
 
 
@@ -915,7 +903,7 @@ class InstructionSet():
         if get_reads:
             return [registers.HL]
         else:
-            registers.A = subtract8_check_overflow(registers.A - registers.condition.C, data[0], registers)
+            registers.A = subtract8_check_overflow(registers.A, data[0], registers.condition.C, registers)
             return []
 
     @instruction([([0xDD, 0x9E, '-'], ("IX",)),
@@ -924,7 +912,7 @@ class InstructionSet():
         if get_reads:
             return [registers[i] + get_8bit_twos_comp(d)]
         else:
-            registers.A = subtract8_check_overflow(registers.A - registers.condition.C, data[0], registers)
+            registers.A = subtract8_check_overflow(registers.A, data[0], registers.condition.C, registers)
             return []
 
     #---- AND ----
@@ -1070,7 +1058,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            subtract8_check_overflow(registers.A, registers[r], registers)
+            subtract8_check_overflow(registers.A, registers[r], 0, registers)
             set_f5_f3(registers, registers[r])
             return []
 
@@ -1079,7 +1067,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            subtract8_check_overflow(registers.A, n, registers)
+            subtract8_check_overflow(registers.A, n, 0, registers)
             set_f5_f3(registers, n)
             return []
 
@@ -1089,7 +1077,7 @@ class InstructionSet():
         if get_reads:
             return [registers.HL]
         else:
-            subtract8_check_overflow(registers.A, data[0], registers)
+            subtract8_check_overflow(registers.A, data[0], 0, registers)
             set_f5_f3(registers, data[0])
             return []
 
@@ -1099,7 +1087,7 @@ class InstructionSet():
         if get_reads:
             return [registers[i] + get_8bit_twos_comp(d)]
         else:
-            subtract8_check_overflow(registers.A, data[0], registers)
+            subtract8_check_overflow(registers.A, data[0], 0, registers)
             set_f5_f3(registers, data[0])
             return []
 
@@ -1117,7 +1105,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers[r] = add8(registers[r], 1, registers, C=False )
+            registers[r] = add8(registers[r], 1, 0, registers, C=False )
             return []
 
     @instruction([(0x34, ())], 0, "INC (HL)", 11)
@@ -1125,7 +1113,7 @@ class InstructionSet():
         if get_reads:
             return [registers.HL]
         else:
-            new = add8(data[0], 1, registers, C=False )
+            new = add8(data[0], 1, 0, registers, C=False )
             return [(registers.HL, new)]
 
     @instruction([([0xDD, 0x34, '-'], ("IX",)),
@@ -1134,7 +1122,7 @@ class InstructionSet():
         if get_reads:
             return [registers[i] + get_8bit_twos_comp(d)]
         else:
-            new = add8(data[0], 1, registers, C=False )
+            new = add8(data[0], 1, 0, registers, C=False )
             return [(registers[i] + get_8bit_twos_comp(d), new)]
 
 
@@ -1153,9 +1141,7 @@ class InstructionSet():
             return []
         else:
             registers.condition.PV = registers[r] == 0x80
-            registers[r] = subtract8(registers[r], 1, registers,
-                                     PV=False)
-            
+            registers[r] = subtract8(registers[r], 1, 0, registers)
             return []
 
     @instruction([(0x35, ())], 0, "DEC (HL)", 11)
@@ -1163,13 +1149,8 @@ class InstructionSet():
         if get_reads:
             return [registers.HL]
         else:
-            new = subtract8(data[0], 1, registers,
-                                     PV=False)
-            if data[0] == 0x80:
-                registers.condition.PV = 1
-            else:
-                registers.condition.PV = 0
-                
+            new = subtract8(data[0], 1, 0, registers)
+            registers.condition.PV = (data[0] == 0x80)
             return [(registers.HL, new)]
 
     @instruction([([0xDD, 0x35, '-'], ("IX",)),
@@ -1178,12 +1159,8 @@ class InstructionSet():
         if get_reads:
             return [registers[i] + get_8bit_twos_comp(d)]
         else:
-            new = subtract8(data[0], 1, registers,
-                                     PV=False)
-            if data[0] == 0x80:
-                registers.condition.PV = 1
-            else:
-                registers.condition.PV = 0
+            new = subtract8(data[0], 1, 0, registers)
+            registers.condition.PV = (data[0] == 0x80)
             return [(registers[i] + get_8bit_twos_comp(d), new)]
 
     #--------------------------------------------------------------------
@@ -1194,7 +1171,6 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            """
             # https://github.com/openMSX/openMSX/blob/master/src/cpu/CPUCore.cc
             # http://z80-heaven.wikidot.com/instructions-set:daa
             diff = 0
@@ -1263,6 +1239,7 @@ class InstructionSet():
             registers.condition.PV = parity(registers.A)
             set_f5_f3_from_a(registers)
             return []
+            """
 
     @instruction([(0x2F, ())], 0, "CPL", 4)
     def cpl(instruction, registers, get_reads, data):
@@ -1282,7 +1259,7 @@ class InstructionSet():
             return []
         else:
             a = registers.A
-            registers.A = subtract8(0, a, registers)
+            registers.A = subtract8(0, a, 0, registers)
             registers.condition.PV = (a == 0x80)
             registers.condition.C = (a != 0x00)
             return []
@@ -1322,7 +1299,7 @@ class InstructionSet():
             return []
         else:
             registers.HALT = True
-            registers.PC -= 1
+            registers.PC = dec16(registers.PC)
             return []
 
 
@@ -1361,16 +1338,15 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            val = registers.HL + getattr(registers, reg)
-            dummy_reg = registers.create()
-            add8(registers.HL & 0xFF, getattr(registers, reg) & 0xFF, dummy_reg, PV=True)
-            registers.condition.H = dummy_reg.condition.C
-            add8(registers.HL >> 8, getattr(registers, reg) >> 8, dummy_reg, PV=True)
-            registers.condition.F3 = dummy_reg.condition.F3
-            registers.condition.F5 = dummy_reg.condition.F5
+            a = registers.HL
+            b = getattr(registers, reg)
+            res = a + b
+            registers.condition.H = (a ^ res ^ b) & 0x1000
             registers.condition.N = 0
-            registers.condition.C = ((val & 0x10000) != 0)
-            registers.HL = val & 0xFFFF
+            registers.condition.C = res & 0x10000
+            registers.condition.F3 = res & 0x0800
+            registers.condition.F5 = res & 0x2000
+            registers.HL = res &  0xFFFF
             return []
 
     @instruction([(0xED7A, ("SP",)), (0xED4A, ("BC",)), (0xED5A, ("DE",)),(0xED6A, ("HL",))], 0, "ADC HL, {0}", 15)
@@ -1378,8 +1354,23 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers.HL = add16(registers.HL + registers.condition.C, getattr(registers, reg), registers)
-
+            a = registers.HL
+            b = getattr(registers, reg)
+            res = a + b + registers.condition.C
+            #print (a, "+",b,"=",res)
+            registers.condition.S = res & 0x8000
+            registers.condition.Z = (res == 0)
+            if res & 0xFFFF:
+                registers.condition.H = (a ^ res ^ b) & 0x1000
+                registers.condition.PV = (a ^ res) & (b ^ res) & 0x8000
+            else:
+                registers.condition.H = (a ^ res) & 0x1000
+                registers.condition.PV = a & res & 0x8000
+            registers.condition.N = 0
+            registers.condition.C = res & 0x10000
+            registers.condition.F3 = res & 0x0800
+            registers.condition.F5 = res & 0x2000
+            registers.HL = res & 0xFFFF
             return []
         
     @instruction([(0xED72, ("SP",)), (0xED42, ("BC",)), (0xED52, ("DE",)),(0xED62, ("HL",))], 0, "SBC HL, {0}", 15)
@@ -1389,28 +1380,20 @@ class InstructionSet():
         else:
             a = registers.HL
             b = registers[reg]
-            res = a - b
-            if registers.condition.C:
-                res -= 1
-            registers.condition.S = (res >> 15) &  0x01
+            res = a - b - registers.condition.C
+            registers.condition.S = res & 0x8000
             registers.condition.N = 1
             registers.condition.Z = (res == 0)
             registers.condition.F3 = res & 0x0800
             registers.condition.F5 = res & 0x2000
-            if (b & 0xFFF) > (a & 0xFFF) - registers.condition.C :
-                registers.condition.H = 1
+            if res & 0xFFFF:
+                registers.condition.H = (a ^ res ^ b) & 0x1000
+                registers.condition.PV = (b ^ a) & (a ^ res) & 0x8000
             else:
-                registers.condition.H = 0
-            
-            pvtest = get_16bit_twos_comp(a) -  get_16bit_twos_comp(b) -  registers.condition.C
-            if pvtest < -32768 or pvtest > 32767:
-                registers.condition.PV = 1 # overflow
-            else:
-                registers.condition.PV = 0
-        
-            registers.condition.C = ((res & 0x10000) != 0)
+                registers.condition.H = (a ^ b) & 0x1000
+                registers.condition.PV = (b ^ a) & a & 0x8000        
+            registers.condition.C = res & 0x10000
             registers.HL = res &  0xFFFF
-
             return []
 
     @instruction([(0xDD39, ("IX", "SP",)), (0xDD09, ("IX", "BC",)), (0xDD19, ("IX", "DE",)),(0xDD29, ("IX", "IX",)),
@@ -1420,15 +1403,15 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            val = registers[i] + registers[r]
-            if ((registers[i] & 0xFFF) + (registers[r] & 0xFFF)) > 0xFFF :
-                registers.condition.H = 1
-            else:
-                registers.condition.H = 0
+            a = registers[i]
+            b = registers[r]
+            res = a + b
+            registers.condition.H = (a ^ res ^ b) & 0x1000
             registers.condition.N = 0
-            registers.condition.C = ((val & 0x10000) != 0)
-            set_f5_f3(registers, (registers[i] >>8)+(registers[r]>>8))
-            registers[i] = val & 0xFFFF
+            registers.condition.C = res & 0x10000
+            registers.condition.F3 = res & 0x0800
+            registers.condition.F5 = res & 0x2000
+            registers[i] = res & 0xFFFF
             return []
 
 
@@ -1439,7 +1422,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers[s] = inc16(registers[s])
+            registers[s] = (registers[s] + 1) & 0xFFFF
             return []
         
 
@@ -1450,7 +1433,7 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            registers[s] = dec16(registers[s])
+            registers[s] = (registers[s] - 1) & 0xFFFF
             return []
 
     #--------------------------------------------------------------------
@@ -1806,7 +1789,7 @@ class InstructionSet():
             a = (data[0] >> 4) | (registers.A & 0xF0)
             hl = ((data[0] << 4) | (registers.A & 0x0f)) & 0xFF
             registers.A = a
-            registers.condition.S = a >> 7
+            registers.condition.S = a & 0x80
             registers.condition.Z = a == 0
             registers.condition.H = 0
             registers.condition.N = 0
@@ -1823,7 +1806,7 @@ class InstructionSet():
             a = (data[0] & 0x0F) | (registers.A & 0xF0)
             hl = ((data[0] >> 4) | (registers.A << 4))  & 0xFF
             registers.A = a
-            registers.condition.S = a >> 7
+            registers.condition.S = a & 0x80
             registers.condition.Z = a == 0
             registers.condition.H = 0
             registers.condition.N = 0
@@ -1851,7 +1834,7 @@ class InstructionSet():
             registers.condition.H = 1
             registers.condition.N = 0
             registers.condition.PV = registers.condition.Z            
-            registers.condition.S = (val >> 7)
+            registers.condition.S = val & 0x80
             #if bit == 5:
                 #registers.condition.F5 = (registers[reg] & (0x01 << bit))
             #if bit == 3:
@@ -1870,7 +1853,7 @@ class InstructionSet():
             registers.condition.H = 1
             registers.condition.N = 0
             registers.condition.PV = registers.condition.Z
-            registers.condition.S = (val >> 7)
+            registers.condition.S = val & 0x80
             set_f5_f3(registers, data[0])
             return []
 
@@ -1885,7 +1868,7 @@ class InstructionSet():
             registers.condition.H = 1
             registers.condition.N = 0
             registers.condition.PV = registers.condition.Z
-            registers.condition.S = (val >> 7)
+            registers.condition.S = val & 0x80
             set_f5_f3(registers, (registers[i]+get_8bit_twos_comp(d)) >> 8)
             return []
 
@@ -2078,8 +2061,7 @@ class InstructionSet():
         else:
             sp = registers.SP
             pc = registers.PC
-            registers.SP = dec16(registers.SP)
-            registers.SP = dec16(registers.SP)
+            registers.SP = sp - 2
             registers.PC = n2 << 8 | n
             return [(sp - 1, pc >> 8),
                     (sp - 2, pc & 0xFF)]
@@ -2095,8 +2077,7 @@ class InstructionSet():
                 instruction.tstates = 17
                 sp = registers.SP
                 pc = registers.PC
-                registers.SP = dec16(registers.SP)
-                registers.SP = dec16(registers.SP)
+                registers.SP = sp - 2
                 registers.PC = n2 << 8 | n
                 return [(sp - 1, pc >> 8),
                         (sp - 2, pc & 0xFF)]
@@ -2110,8 +2091,7 @@ class InstructionSet():
         if get_reads:
             return [registers.SP, inc16(registers.SP)]
         else:
-            registers.SP = inc16(registers.SP)
-            registers.SP = inc16(registers.SP)
+            registers.SP += 2
             registers.PC = data[1] << 8 | data[0]
             return []
         
@@ -2123,8 +2103,7 @@ class InstructionSet():
             return [registers.SP, inc16(registers.SP)]
         else:
             if getattr(registers.condition, reg) == val:
-                registers.SP = inc16(registers.SP)
-                registers.SP = inc16(registers.SP)
+                registers.SP += 2
                 registers.PC = data[1] << 8 | data[0]
                 instruction.tstates = 11
             else:
@@ -2137,9 +2116,8 @@ class InstructionSet():
             return [registers.SP, inc16(registers.SP)]
         else:
             #TODO: implement return from interrupt
-            logging.warn("RETI not fully implemented")
-            registers.SP = inc16(registers.SP)
-            registers.SP = inc16(registers.SP)
+            #logging.warn("RETI not fully implemented")
+            registers.SP += 2
             registers.PC = data[1] << 8 | data[0]
             return []
         
@@ -2150,8 +2128,7 @@ class InstructionSet():
         else:
             #TODO: implement from non masked interrupt
             logging.warn("RETN not fully implemented")
-            registers.SP = inc16(registers.SP)
-            registers.SP = inc16(registers.SP)
+            registers.SP += 2
             registers.PC = data[1] << 8 | data[0]
             registers.IFF = registers.IFF2
             return []
@@ -2165,8 +2142,7 @@ class InstructionSet():
         else:
             sp = registers.SP
             pc = registers.PC
-            registers.SP = dec16(registers.SP)
-            registers.SP = dec16(registers.SP)
+            registers.SP = sp - 2
             registers.PC = p
             return [(sp - 1, pc >> 8),
                     (sp - 2, pc & 0xFF)]
