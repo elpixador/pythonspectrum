@@ -485,7 +485,6 @@ def initgfx():
     b_quit_game = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect((startingPoint+((buttonWidth+gap)*2), 1), (buttonWidth, buttonHeight)), text='Quit Game', manager=gui_manager)
     
-    main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
     gui_manager.draw_ui(main_screen)
 
     # pintem un fons maco on posarem els botonets
@@ -517,8 +516,9 @@ clock = pygame.time.Clock()
 mach = Z80()
 
 # Initialize graphics and GUI
-border = 7 # color inicial
 initgfx()
+border = 7 # color inicial
+main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
 
 # Set up the ZX Spectrum screen surfaces (unscaled and scaled)
 zx_screen = pygame.Surface(ZX_RES) 
