@@ -438,7 +438,7 @@ class InstructionSet():
             return []
         else:
             stack = registers.SP
-            registers.SP -= 2
+            registers.SP = (registers.SP - 2) & 0xFFFF
             return [(stack - 1, registers[q]), (stack - 2, registers[q2])]
 
 
@@ -449,7 +449,7 @@ class InstructionSet():
             return []
         else:
             stack = registers.SP
-            registers.SP -= 2
+            registers.SP = (registers.SP - 2) & 0xFFFF
             return [(stack - 1, registers[i] >> 8), (stack - 2, registers[i] & 255)]
 
 
@@ -460,7 +460,7 @@ class InstructionSet():
             stack = registers.SP
             return [stack, stack + 1]
         else:
-            registers.SP += 2
+            registers.SP = (registers.SP + 2) & 0xFFFF
             registers[q2] = data[0]
             registers[q] = data[1]
             return []
@@ -473,7 +473,7 @@ class InstructionSet():
             stack = registers.SP
             return [stack, stack + 1]
         else:
-            registers.SP += 2
+            registers.SP = (registers.SP + 2) & 0xFFFF
             registers[i] = data[1] << 8 | data[0]
             return []
 
@@ -2059,12 +2059,12 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            sp = registers.SP
+            sp = (registers.SP - 2) & 0xFFFF
             pc = registers.PC
-            registers.SP = sp - 2
+            registers.SP = sp
             registers.PC = n2 << 8 | n
-            return [(sp - 1, pc >> 8),
-                    (sp - 2, pc & 0xFF)]
+            return [((sp+1) & 0xFFFF, pc >> 8),
+                    (sp, pc & 0xFF)]
         
     @instruction([([0xC4+offset, '-', '-'], (reg, reg_name, val))
                   for offset, reg_name, reg, val in conditions],
@@ -2075,12 +2075,12 @@ class InstructionSet():
         else:
             if getattr(registers.condition, reg) == val:
                 instruction.tstates = 17
-                sp = registers.SP
+                sp = (registers.SP - 2) & 0xFFFF
                 pc = registers.PC
-                registers.SP = sp - 2
+                registers.SP = sp
                 registers.PC = n2 << 8 | n
-                return [(sp - 1, pc >> 8),
-                        (sp - 2, pc & 0xFF)]
+                return [((sp+1) & 0xFFFF, pc >> 8),
+                        (sp, pc & 0xFF)]
             else:
                 instruction.tstates = 10
                 return []
@@ -2091,7 +2091,7 @@ class InstructionSet():
         if get_reads:
             return [registers.SP, inc16(registers.SP)]
         else:
-            registers.SP += 2
+            registers.SP = (registers.SP + 2) & 0xFFFF
             registers.PC = data[1] << 8 | data[0]
             return []
         
@@ -2103,7 +2103,7 @@ class InstructionSet():
             return [registers.SP, inc16(registers.SP)]
         else:
             if getattr(registers.condition, reg) == val:
-                registers.SP += 2
+                registers.SP = (registers.SP + 2) & 0xFFFF
                 registers.PC = data[1] << 8 | data[0]
                 instruction.tstates = 11
             else:
@@ -2117,7 +2117,7 @@ class InstructionSet():
         else:
             #TODO: implement return from interrupt
             #logging.warn("RETI not fully implemented")
-            registers.SP += 2
+            registers.SP = (registers.SP + 2) & 0xFFFF
             registers.PC = data[1] << 8 | data[0]
             return []
         
@@ -2128,7 +2128,7 @@ class InstructionSet():
         else:
             #TODO: implement from non masked interrupt
             logging.warn("RETN not fully implemented")
-            registers.SP += 2
+            registers.SP = (registers.SP + 2) & 0xFFFF
             registers.PC = data[1] << 8 | data[0]
             registers.IFF = registers.IFF2
             return []
@@ -2140,12 +2140,12 @@ class InstructionSet():
         if get_reads:
             return []
         else:
-            sp = registers.SP
+            sp = (registers.SP - 2) & 0xFFFF
             pc = registers.PC
-            registers.SP = sp - 2
+            registers.SP = sp
             registers.PC = p
-            return [(sp - 1, pc >> 8),
-                    (sp - 2, pc & 0xFF)]
+            return [((sp+1) & 0xFFFF, pc >> 8),
+                    (sp, pc & 0xFF)]
         
     #--------------------------------------------------------------------
     # Input Output Group
