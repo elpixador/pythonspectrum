@@ -277,8 +277,8 @@ def readSpectrumFile(fichero):
             mach.registers.R = byteFromFile(f) & 0x7F
             b = byteFromFile(f) # Bordercolor etc
             border = (b & 0b00001110 ) > 1
-            main_screen.fill(colorTable[0][border])
-
+            main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
+            
             mach.registers.R = mach.registers.R | ((b & 0x01) << 7)
             isPacked = (b & 0b00100000) >> 5
             mach.registers.E = byteFromFile(f)
@@ -344,7 +344,7 @@ def readSpectrumFile(fichero):
             mach.registers.SP = byteFromFile(f) | (byteFromFile(f) << 8)
             mach.registers.IM = byteFromFile(f) & 0x03
             border = byteFromFile(f)  # Bordercolor
-            main_screen.fill(colorTable[0][border])
+            main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
             memFromFile(f)
             f.close()
             mach.registers.PC = (
@@ -382,7 +382,7 @@ def readSpectrumFile(fichero):
             byteFromFile(f)  # reserved
             byteFromFile(f)  # reserved
             border = byteFromFile(f)  # Bordercolor
-            main_screen.fill(colorTable[0][border])
+            main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
             byteFromFile(f)  # reserved
             b = byteFromFile(f)  # status word low
             mach.registers.IFF = b & 1
@@ -485,16 +485,14 @@ def initgfx():
     b_quit_game = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect((startingPoint+((buttonWidth+gap)*2), 1), (buttonWidth, buttonHeight)), text='Quit Game', manager=gui_manager)
     
-    main_screen.fill(colorTable[0][border])
+    main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
     gui_manager.draw_ui(main_screen)
 
-"""    # TODO
     # pintem un fons maco on posarem els botonets
-    fons = pygame.image.load('zxspectrum.png').convert()
+    fons = pygame.image.load('buttonbg.png').convert()
     fons = pygame.transform.scale(fons, (SCREEN_WIDTH, buttonHeight))
-    rectangle = pygame.Rect(1,1,SCREEN_WIDTH,buttonHeight)
-    main_screen.blit(fons,rectangle)
-    pygame.display.update()"""
+    main_screen.blit(fons,(0,0))
+    pygame.display.update()
 
 
 # INICI
