@@ -67,98 +67,99 @@ class Z80(io.Interruptable):
     def interrupt(self):
         self._interrupted = True
 
-    def step_instruction(self):
-        ins = False
+    def step_instruction(self, cicles):
+        while cicles > 0:
+            ins = False
 
-        if self._interrupted and self.registers.IFF:
-            self._interrupted = False
-            if self.registers.HALT:
-                self.registers.HALT = False
-                self.registers.PC = util.inc16(self.registers.PC)
-            if self.registers.IM == 1:
-                # print ("!!! Interrupt Mode 1 !!!")
-                #ins, args = self.instructions << 0xCD
-                #ins, args = self.instructions << 0x38
-                #ins, args = self.instructions << 0x00
-                ins, args = self.instructions << 0xFF
-            elif self.registers.IM == 2:
-                # print ("!!! Interrupt Mode 2 !!!")
-                imadr = (self.registers.I << 8) | 0xFF
-                ins, args = self.instructions << 0xCD
-                ins, args = self.instructions << self._memory[imadr & 0xFFFF]
-                ins, args = self.instructions << self._memory[(imadr + 1) & 0xFFFF]
-        else:
-            while not ins:
-                ins, args = self.instructions << self._memory[self.registers.PC]
-                self.registers.PC = util.inc16(self.registers.PC)
-            #print("{0:X} : {1} ".format(pc, ins.assembler(args)))
-
-        rd = ins.get_read_list(args)
-        data = [0] * len(rd)
-        for n, i in enumerate(rd):
-            if i < 0x10000:
-                data[n] = self._memory[i]
+            if self._interrupted and self.registers.IFF:
+                self._interrupted = False
+                if self.registers.HALT:
+                    self.registers.HALT = False
+                    self.registers.PC = util.inc16(self.registers.PC)
+                if self.registers.IM == 1:
+                    # print ("!!! Interrupt Mode 1 !!!")
+                    #ins, args = self.instructions << 0xCD
+                    #ins, args = self.instructions << 0x38
+                    #ins, args = self.instructions << 0x00
+                    ins, args = self.instructions << 0xFF
+                elif self.registers.IM == 2:
+                    # print ("!!! Interrupt Mode 2 !!!")
+                    imadr = (self.registers.I << 8) | 0xFF
+                    ins, args = self.instructions << 0xCD
+                    ins, args = self.instructions << self._memory[imadr & 0xFFFF]
+                    ins, args = self.instructions << self._memory[(imadr + 1) & 0xFFFF]
             else:
-                port = i & 0xFF
-                if port == 0xFE: # keyboard
-                    adr = (i & 0xFFFF) >> 8
-                    res = 0xBF
-                    b = 0x80
-                    while (b != 0):
-                        if ((adr & b) == 0): res &= keysSpectrum[b ^ 0xFF]
-                        b >>= 1
-                    data[n] = res
+                while not ins:
+                    ins, args = self.instructions << self._memory[self.registers.PC]
+                    self.registers.PC = (self.registers.PC + 1) & 0xFFFF
+                #print("{0:X} : {1} ".format(pc, ins.assembler(args)))
+
+            rd = ins.get_read_list(args)
+            data = [0] * len(rd)
+            for n, i in enumerate(rd):
+                if i < 0x10000:
+                    data[n] = self._memory[i]
                 else:
-                    data[n] = 0x00
-
-        wrt = ins.execute(data, args)
-        for i in wrt:
-            adr = i[0]
-            if adr >= 0x10000:
-                address = adr & 0xFF
-
-                if (address == 0xFE): # es el port 254
-                    #Bit   7   6   5   4   3   2   1   0
-                    #  +-------------------------------+
-                    #  |   |   |   | E | M |   Border  |
-                    #  +-------------------------------+
-
-                    # print((i[1] & 0b00010000) >> 4) #filtrem el bit de audio output per generar el so
-                    #cal cridar la funció que toca per el so
-
-                    audioword = 0x0000
-                    if((i[1] & 0b00010000) >> 4):
-                        audioword = 32767
+                    port = i & 0xFF
+                    if port == 0xFE: # keyboard
+                        adr = (i & 0xFFFF) >> 8
+                        res = 0xBF
+                        b = 0x80
+                        while (b != 0):
+                            if ((adr & b) == 0): res &= keysSpectrum[b ^ 0xFF]
+                            b >>= 1
+                        data[n] = res
                     else:
-                        audioword = -1
+                        data[n] = 0x00
 
-                    for s in range(1):
-                         bufaudio[s][0] = audioword  # left
-                         bufaudio[s][1] = audioword  # right
+            wrt = ins.execute(data, args)
+            for i in wrt:
+                adr = i[0]
+                if adr >= 0x10000:
+                    address = adr & 0xFF
 
-                    sound = pygame.sndarray.make_sound(bufaudio)
-                    sound.play()
+                    if (address == 0xFE): # es el port 254
+                        #Bit   7   6   5   4   3   2   1   0
+                        #  +-------------------------------+
+                        #  |   |   |   | E | M |   Border  |
+                        #  +-------------------------------+
+
+                        # print((i[1] & 0b00010000) >> 4) #filtrem el bit de audio output per generar el so
+                        #cal cridar la funció que toca per el so
+
+                        audioword = 0x0000
+                        if((i[1] & 0b00010000) >> 4):
+                            audioword = 32767
+                        else:
+                            audioword = -1
+
+                        for s in range(1):
+                            bufaudio[s][0] = audioword  # left
+                            bufaudio[s][1] = audioword  # right
+
+                        sound = pygame.sndarray.make_sound(bufaudio)
+                        sound.play()
 
 
-                 #festio del color del borde
-                    border = (i[1] & 0b00000111) 
-                 #   main_screen.fill(colorTable[0][border])
-                 
-                #iomap.address[address].write.emit(address, i[1])
-                #self._iomap.address[address].write(address, i[1])
-                #print (chr(i[1]))
-            else:
-               if (adr > 16383): # Només escrivim a la RAM
-                  # Caché per a renderscreenDiff
-                  if ((adr < 23296) and (self._memory[adr] != i[1])): # És pantalla i ha canviat?
-                     if (adr < 22528): # Patrons o atributs?
-                        tilechanged[((adr & 0b0001100000000000) >> 3) | adr & 0b11111111] = True
-                     else:
-                        tilechanged[adr & 0b0000001111111111] = True
-                  # Escrivim
-                  self._memory[adr] = i[1]
-
-        return ins, args
+                    #festio del color del borde
+                        border = (i[1] & 0b00000111) 
+                    #   main_screen.fill(colorTable[0][border])
+                    
+                    #iomap.address[address].write.emit(address, i[1])
+                    #self._iomap.address[address].write(address, i[1])
+                    #print (chr(i[1]))
+                else:
+                    if (adr > 16383): # Només escrivim a la RAM
+                        # Caché per a renderscreenDiff
+                        if ((adr < 23296) and (self._memory[adr] != i[1])): # És pantalla i ha canviat?
+                            if (adr < 22528): # Patrons o atributs?
+                                tilechanged[((adr & 0b0001100000000000) >> 3) | adr & 0b11111111] = True
+                            else:
+                                tilechanged[adr & 0b0000001111111111] = True
+                        # Escrivim
+                        self._memory[adr] = i[1]
+            cicles -= ins.tstates
+        return cicles
 
 class Worker:
     def __init__(self):
@@ -166,13 +167,11 @@ class Worker:
         self.thread = None
 
     def loop(self):
-        cicles = 69888
+        cicles = 0
         while not self.stop_event.is_set():
-            ins, _ = mach.step_instruction()
-            cicles -= ins.tstates
-            if cicles <= 0:
-                cicles += 69888
-                mach.interrupt()
+            cicles += 69888
+            cicles = mach.step_instruction(cicles)
+            mach.interrupt()
     
     def start(self):
         if self.thread is not None and self.thread.is_alive():
