@@ -315,8 +315,7 @@ class Z80(io.Interruptable):
         self._interrupted = True
     
     def step_instruction(self):
-        ins, args = False, []
-        pc = self.registers.PC
+        ins = False
         
         if self._interrupted and self.registers.IFF:
             self._interrupted = False
@@ -371,7 +370,7 @@ class Z80(io.Interruptable):
             else:
                if (adr > 16383): # Només escrivim a la RAM
                   # Caché per a renderscreenDiff
-                  if ((adr < 23296) & (self._memory[adr] != i[1])): # És pantalla i ha canviat?
+                  if ((adr < 23296) and (self._memory[adr] != i[1])): # És pantalla i ha canviat?
                      if (adr < 22528): # Patrons o atributs?
                         tilechanged[((adr & 0b0001100000000000) >> 3) | adr & 0b11111111] = True
                      else:
