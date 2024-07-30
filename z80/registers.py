@@ -1,19 +1,14 @@
 class BitAccesser(object):
     def __init__(self, bit_names, registers, reg):
         object.__setattr__(self, "bits",
-                           dict(zip(bit_names, range(7, -1, -1))))
-        self.registers = registers
-        #self.registers = registers
-        self.reg = reg
+                           dict(zip(bit_names, range(7, -1, -1))))        
+        object.__setattr__(self, "registers", registers) #self.registers = registers # per evitar passar per __setattr__
+        object.__setattr__(self, "reg", reg) #self.reg = reg
         
     def __getattr__(self, b):
         return (self.registers[self.reg] >>  self.bits[b]) &  1 
     
     def __setattr__(self, b, v):
-        if not b in self.bits:
-            object.__setattr__(self, b, v)
-            return
-
         if v:
             self.registers[self.reg] = self.registers[self.reg] | (1 <<  self.bits[b])
         else:

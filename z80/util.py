@@ -31,115 +31,39 @@ def make_8bit_twos_comp(val):
     val += 1
     return val
 
-def subtract8(a, b, registers, S=True, N=True, Z=True,
-              F3=True, F5=True, H=True, PV=False, C=False):
-    """ subtract b from a,  return result and set flags """
-    res = a - b
-    if S:
-        registers.condition.S = (res >> 7) &  0x01
-    if N:
-        registers.condition.N = 1
-    if Z:
-        registers.condition.Z = (res == 0)
-    if F3:
-        registers.condition.F3 = res & 0x08
-    if F5:
-        registers.condition.F5 = res & 0x20
-    if H:
-        if (b & 0xF) > (a & 0xF) :
-            registers.condition.H = 1
-        else:
-            registers.condition.H = 0
-    if PV:
-        #if (a >> 7 != b >> 7):
-            #if (b >> 7):
-                #if a  > (a | (0x1 << 7)):
-                    #registers.condition.PV = 1 # overflow
-        a = get_8bit_twos_comp(a)
-        b = get_8bit_twos_comp(b)
-        if (a - b) <  -127 or (a - b) > 128:
-            registers.condition.PV = 1 # overflow
-        #if get_8bit_twos_comp(res) < -127 or get_8bit_twos_comp(res) > 128:
-            #registers.condition.PV = 1 # overflow
-        else:
-            registers.condition.PV = 0
-    if C:
-        registers.condition.C = ((res & 0x100) != 0)
-    return res &  0xFF
+def subtract8(a, b, cf, registers, PV=False, C=False):
+    """ subtract b, a and carry,  return result and set flags """
+    res = a - b - cf
     
-def subtract8_check_overflow(a, b, registers):
-    return subtract8(a, b, registers, PV=True, C=True)
-
-def add8(a, b, registers, S=True, Z=True, H=True,
-         PV=True, N=True, C=True, F3=True, F5=True):
-    """ add a and b,  return result and set flags """
-    res = a + b
-    if S:
-        registers.condition.S = (res >> 7) &  0x01
-    if Z:
-        registers.condition.Z = (res & 0xFF == 0)
-    if H:
-        if ((a & 0xF) + (b & 0xF)) > 0xF :
-            registers.condition.H = 1
-        else:
-            registers.condition.H = 0
-    if PV:
-        if ((a >> 7) == (b >> 7) and (a >> 7) != ((res & 0xFF) >> 7)):
-            registers.condition.PV = 1 # overflow
-        else:
-            registers.condition.PV = 0
-    if N:
-        registers.condition.N = 0
-    if C:
-        registers.condition.C = ((res & 0x100) != 0)
-    if F3:
-        registers.condition.F3 = res & 0x08
-    if F5:
-        registers.condition.F5 = res & 0x20
-    return res &  0xFF
-
-def add16(a, b, registers):
-    """ add a and b,  return result and set flags """
-    res = a + b
-    #print (a, "+",b,"=",res)
-    registers.condition.S = (res >> 15) &  0x01
-    registers.condition.Z = (res == 0)
-    if ((a & 0xFFF) + (b & 0xFFF)) > 0xFFF :
-        registers.condition.H = 1
-    else:
-        registers.condition.H = 0
-    if ((a >> 15) == (b >> 15) and (a >> 15) != ((res & 0xFFFF) >> 15)):
-        registers.condition.PV = 1 # overflow
-    else:
-        registers.condition.PV = 0
-    registers.condition.N = 0
-    registers.condition.C = ((res & 0x10000) != 0)
-    
-    registers.condition.F3 = res & 0x0800
-    registers.condition.F5 = res & 0x2000
-    return res &  0xFFFF
-
-def subtract16(a, b, registers):
-    """ subtract b from a,  return result and set flags """
-    res = a - b
-    #print (a, "-", b, "=", res, "(", hex(res), ")")
-    registers.condition.S = (res >> 15) &  0x01
+    registers.condition.S = res & 0x80
     registers.condition.N = 1
     registers.condition.Z = (res == 0)
-    registers.condition.F3 = res & 0x0800
-    registers.condition.F5 = res & 0x2000
-    if (b & 0xFFF) > (a & 0xFFF) :
-        registers.condition.H = 1
-    else:
-        registers.condition.H = 0
-    
-    if (a >> 15 != (res&0xFFFF) >> 15):
-        registers.condition.PV = 1 # overflow
-    else:
-        registers.condition.PV = 0
+    registers.condition.F3 = res & 0x08
+    registers.condition.F5 = res & 0x20    
+    registers.condition.H = (a ^ res ^ b) & 0x10
+    if PV:
+        registers.condition.PV = (b ^ a) & (a ^ res) & 0x80
 
-    registers.condition.C = ((res & 0x10000) != 0)
-    return res &  0xFFFF
+    if C:
+        registers.condition.C = res & 0x100
+    return res &  0xFF
+    
+def subtract8_check_overflow(a, b, cf, registers):
+    return subtract8(a, b, cf, registers, PV=True, C=True)
+
+def add8(a, b, cf, registers, C=True):
+    """ add a, b and carry flag,  return result and set flags """
+    res = a + b + cf
+    registers.condition.S = res & 0x80
+    registers.condition.Z = (res & 0xFF) == 0
+    registers.condition.H = (a ^ res ^ b) & 0x10
+    registers.condition.PV = (a ^ res) & (b ^ res) & 0x80
+    registers.condition.N = 0
+    if C:
+        registers.condition.C = res & 0x100
+    registers.condition.F3 = res & 0x08
+    registers.condition.F5 = res & 0x20
+    return res &  0xFF
 
 def inc16(val):
     return (val + 1) & 0xFFFF
@@ -160,40 +84,43 @@ def parity(n):
     return not (p % 2) 
 
 def a_and_n(registers, n):
-    registers.A = registers.A & n
+    a = registers.A & n
+    registers.A = a
     registers.condition.H = 1
     registers.condition.N = 0
-    registers.condition.PV = parity(registers.A)
+    registers.condition.PV = parity(a)
     registers.condition.C = 0
-    registers.condition.Z = (registers.A==0)
-    registers.condition.S = (registers.A>>7)
-    set_f5_f3_from_a(registers)
+    registers.condition.Z = (a == 0)
+    registers.condition.S = a & 0x80
+    set_f5_f3(registers, a)
 
 
 def a_or_n(registers, n):
-    registers.A = registers.A | n
+    a = registers.A | n
+    registers.A = a
     registers.condition.H = 0
     registers.condition.N = 0
-    registers.condition.PV = parity(registers.A)
+    registers.condition.PV = parity(a)
     registers.condition.C = 0
-    registers.condition.Z = (registers.A==0)
-    registers.condition.S = (registers.A>>7)    
-    set_f5_f3_from_a(registers)    
+    registers.condition.Z = (a == 0)
+    registers.condition.S = a & 0x80
+    set_f5_f3(registers, a)
     
 def a_xor_n(registers, n):
-    registers.A = registers.A ^ n
+    a = registers.A ^ n
+    registers.A = a
     registers.condition.H = 0
     registers.condition.N = 0
-    registers.condition.PV = parity(registers.A)
+    registers.condition.PV = parity(a)
     registers.condition.C = 0
-    registers.condition.Z = (registers.A==0)
-    registers.condition.S = (registers.A>>7)    
-    set_f5_f3_from_a(registers)
+    registers.condition.Z = (a == 0)
+    registers.condition.S = a & 0x80
+    set_f5_f3(registers, a)
  
 def rotate_left_carry(registers, n):
     c = n >> 7
     v = (n << 1 | c) & 0xFF
-    registers.condition.S = v >> 7
+    registers.condition.S = v & 0x80
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
@@ -205,7 +132,7 @@ def rotate_left_carry(registers, n):
 def rotate_left(registers, n):
     c = n >> 7
     v = (n << 1 | registers.condition.C) & 0xFF
-    registers.condition.S = v >> 7
+    registers.condition.S = v & 0x80
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
@@ -219,7 +146,7 @@ def rotate_left(registers, n):
 def rotate_right_carry(registers, n):
     c = n & 0x01
     v = n >> 1 | (c << 7)
-    registers.condition.S = v >> 7
+    registers.condition.S = v & 0x80
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
@@ -231,7 +158,7 @@ def rotate_right_carry(registers, n):
 def rotate_right(registers, n):
     c = n & 0x01
     v = n >> 1 | (registers.condition.C << 7)
-    registers.condition.S = v >> 7
+    registers.condition.S = v & 0x80
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
@@ -243,7 +170,7 @@ def rotate_right(registers, n):
 def shift_left(registers, n):
     c = n >> 7
     v = (n << 1 ) & 0xFF
-    registers.condition.S = v >> 7
+    registers.condition.S = v & 0x80
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
@@ -255,7 +182,7 @@ def shift_left(registers, n):
 def shift_left_logical(registers, n):
     c = n >> 7
     v = ((n << 1 ) & 0xFF) | 0x01
-    registers.condition.S = v >> 7
+    registers.condition.S = v & 0x80
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
@@ -267,7 +194,7 @@ def shift_left_logical(registers, n):
 def shift_right(registers, n):
     c = n & 0x01
     v = n >> 1 | (n & 0x80)
-    registers.condition.S = v >> 7
+    registers.condition.S = v & 0x80
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
