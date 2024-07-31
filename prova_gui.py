@@ -68,7 +68,8 @@ class Z80(io.Interruptable):
         self._interrupted = True
 
     def step_instruction(self, cicles):
-        global border
+        global border,  contaudio, bufferlen, bufaudio, audioword
+
         while cicles > 0:
             ins = False
 
@@ -114,6 +115,9 @@ class Z80(io.Interruptable):
                         data[n] = 0x00
 
             wrt = ins.execute(data, args)
+
+            audioword = 0
+
             for i in wrt:
                 adr = i[0]
                 if adr >= 0x10000:
@@ -128,23 +132,26 @@ class Z80(io.Interruptable):
                         # print((i[1] & 0b00010000) >> 4) #filtrem el bit de audio output per generar el so
                         #cal cridar la funció que toca per el so
 
-                        audioword = 0x0000
+                        #audioword = 0x0000
                         if((i[1] & 0b00010000) >> 4):
-                            audioword = 32767
+                            audioword = 256
                         else:
-                            audioword = -1
+                            audioword = 0
 
-                        for s in range(1):
-                            bufaudio[s][0] = audioword  # left
-                            bufaudio[s][1] = audioword  # right
 
-                        sound = pygame.sndarray.make_sound(bufaudio)
-                        sound.play()
-
+                        if (contaudio & bufferlen):
+                            sound = pygame.sndarray.make_sound(bufaudio)
+                            sound.play()
+                            contaudio=0
+                            bufaudio = numpy.zeros((bufferlen, 2), dtype = numpy.int16)
+                        else:
+                            bufaudio[contaudio][0] = audioword # left
+                            bufaudio[contaudio][1] = audioword  # right
+                            contaudio = contaudio + 1
 
                     #gestio del color del borde
                         border = (i[1] & 0b00000111) 
-                        main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
+                    #    main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
                     
                     #iomap.address[address].write.emit(address, i[1])
                     #self._iomap.address[address].write(address, i[1])
@@ -160,6 +167,9 @@ class Z80(io.Interruptable):
                         # Escrivim
                         self._memory[adr] = i[1]
             cicles -= ins.tstates
+
+      
+
         return cicles
 
 class Worker:
@@ -509,10 +519,14 @@ ZX_RES = WIDTH, HEIGHT = 256, 192
 MARGIN = 60 
 UI_HEIGHT = 20
 
-bits = 16
+contaudio = 0
 
-pygame.mixer.pre_init(344100, bits, 2)
-bufaudio = numpy.zeros((1, 2), dtype = numpy.int16)
+bufferlen = 32
+bits = -16
+
+pygame.mixer.pre_init(44100, bits, 2, bufferlen)
+#pygame.mixer.music.set_volume(1)
+bufaudio = numpy.zeros((bufferlen, 2), dtype = numpy.int16)
 
 # Initialize Pygame and the clock
 clock = pygame.time.Clock()
@@ -540,6 +554,7 @@ worker = Worker()
 worker.start() 
 
 conta = 0
+audioword = 0
 
 # Main loop
 while is_running:
@@ -603,5 +618,8 @@ while is_running:
     gui_manager.draw_ui(main_screen)
 
     pygame.display.update()
+
     
+
+
 quit_app()
