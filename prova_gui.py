@@ -68,7 +68,7 @@ class Z80(io.Interruptable):
         self._interrupted = True
 
     def step_instruction(self, cicles):
-        global border,  contaudio, bufferlen, bufaudio, audioword
+        global nborder,  contaudio, bufferlen, bufaudio, audioword
 
         while cicles > 0:
             ins = False
@@ -150,8 +150,7 @@ class Z80(io.Interruptable):
                             contaudio = contaudio + 1
 
                     #gestio del color del borde
-                        border = (i[1] & 0b00000111) 
-                    #    main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
+                        nborder = (i[1] & 0b00000111) 
                     
                     #iomap.address[address].write.emit(address, i[1])
                     #self._iomap.address[address].write(address, i[1])
@@ -258,7 +257,7 @@ def memFromPackedFile(aFile, aInici, aLongitud):
 
 
 def readSpectrumFile(fichero):
-    global border
+    global nborder
     if fichero:
         worker.stop()
 
@@ -288,8 +287,7 @@ def readSpectrumFile(fichero):
             mach.registers.I = byteFromFile(f)
             mach.registers.R = byteFromFile(f) & 0x7F
             b = byteFromFile(f) # Bordercolor etc
-            border = (b & 0b00001110 ) > 1
-            main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
+            nborder = (b & 0b00001110 ) > 1
             
             mach.registers.R = mach.registers.R | ((b & 0x01) << 7)
             isPacked = (b & 0b00100000) >> 5
@@ -355,8 +353,8 @@ def readSpectrumFile(fichero):
             mach.registers.A = byteFromFile(f)
             mach.registers.SP = byteFromFile(f) | (byteFromFile(f) << 8)
             mach.registers.IM = byteFromFile(f) & 0x03
-            border = byteFromFile(f)  # Bordercolor
-            main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
+            nborder = byteFromFile(f)  # Bordercolor
+
             memFromFile(f)
             f.close()
             mach.registers.PC = (
@@ -393,8 +391,8 @@ def readSpectrumFile(fichero):
             mach.registers.PC = byteFromFile(f) | (byteFromFile(f) << 8)
             byteFromFile(f)  # reserved
             byteFromFile(f)  # reserved
-            border = byteFromFile(f)  # Bordercolor
-            main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
+            nborder = byteFromFile(f)  # Bordercolor
+
             byteFromFile(f)  # reserved
             b = byteFromFile(f)  # status word low
             mach.registers.IFF = b & 1
@@ -442,6 +440,11 @@ def renderline(y, adr_pattern):
         adr_attributs = adr_attributs + 1
 
 def renderscreenFull():
+    global border, nborder
+    if (border != nborder):
+        border = nborder
+        main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
+
     dir = 16384
     for y in range(192):
         # 000 tt zzz yyy xxxxx
@@ -450,6 +453,11 @@ def renderscreenFull():
 
 
 def renderscreenDiff():
+    global border, nborder
+    if (border != nborder):
+        border = nborder
+        main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
+
     for p in range(0, 768):
         if tilechanged[p] == True:
             ink, paper = decodecolor(mem[22528 + p])
@@ -470,6 +478,7 @@ def renderscreenDiff():
             tilechanged[p] = False
 
 def initgfx():
+    global border
     pygame.init()
     pygame.display.set_caption("Pythonspectrum")
     pygame.display.set_icon(pygame.image.load("./window.png"))
@@ -537,6 +546,7 @@ mach = Z80()
 # Initialize graphics and GUI
 
 border = 7 # color inicial
+nborder = border
 initgfx()
 
 # Set up the ZX Spectrum screen surfaces (unscaled and scaled)
