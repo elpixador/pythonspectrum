@@ -143,7 +143,7 @@ class Z80(io.Interruptable):
 
                     #festio del color del borde
                         border = (i[1] & 0b00000111) 
-                    #   main_screen.fill(colorTable[0][border])
+                        main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
                     
                     #iomap.address[address].write.emit(address, i[1])
                     #self._iomap.address[address].write(address, i[1])
