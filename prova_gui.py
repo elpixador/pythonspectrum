@@ -68,6 +68,7 @@ class Z80(io.Interruptable):
         self._interrupted = True
 
     def step_instruction(self, cicles):
+        global border
         while cicles > 0:
             ins = False
 
@@ -141,7 +142,7 @@ class Z80(io.Interruptable):
                         sound.play()
 
 
-                    #festio del color del borde
+                    #gestio del color del borde
                         border = (i[1] & 0b00000111) 
                         main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
                     
@@ -247,6 +248,7 @@ def memFromPackedFile(aFile, aInici, aLongitud):
 
 
 def readSpectrumFile(fichero):
+    global border
     if fichero:
         worker.stop()
 
@@ -519,7 +521,7 @@ clock = pygame.time.Clock()
 mach = Z80()
 
 # Initialize graphics and GUI
-global border
+
 border = 7 # color inicial
 initgfx()
 
