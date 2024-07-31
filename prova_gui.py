@@ -467,6 +467,9 @@ def initgfx():
     SCREEN_HEIGHT = (HEIGHT + MARGIN) * SCALE + UI_HEIGHT
     # Set up the main screen with scaling
     main_screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT), vsync=0)
+    # Draw the border
+    main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
+
 
     # Set up the UI manager and elements
     global gui_manager
@@ -516,9 +519,9 @@ clock = pygame.time.Clock()
 mach = Z80()
 
 # Initialize graphics and GUI
-initgfx()
+global border
 border = 7 # color inicial
-main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
+initgfx()
 
 # Set up the ZX Spectrum screen surfaces (unscaled and scaled)
 zx_screen = pygame.Surface(ZX_RES) 
