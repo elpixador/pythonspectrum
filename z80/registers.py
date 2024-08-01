@@ -1,18 +1,20 @@
 class BitAccesser(object):
     def __init__(self, bit_names, registers, reg):
-        object.__setattr__(self, "bits",
-                           dict(zip(bit_names, range(7, -1, -1))))        
+        object.__setattr__(self, "bitspos",
+                           dict(zip(bit_names, range(7, -1, -1))))
+        object.__setattr__(self, "bitsval",
+                           dict(zip(bit_names, [0x80, 0x40, 0x20, 0x10, 0x8, 0x4, 0x2, 0x1])))
         object.__setattr__(self, "registers", registers) #self.registers = registers # per evitar passar per __setattr__
         object.__setattr__(self, "reg", reg) #self.reg = reg
         
     def __getattr__(self, b):
-        return (self.registers[self.reg] >>  self.bits[b]) &  1 
+        return (self.registers[self.reg] >>  self.bitspos[b]) &  1
     
     def __setattr__(self, b, v):
         if v:
-            self.registers[self.reg] = self.registers[self.reg] | (1 <<  self.bits[b])
+            self.registers[self.reg] = self.registers[self.reg] | self.bitsval[b]
         else:
-            self.registers[self.reg] = self.registers[self.reg] & ((1 <<  self.bits[b]) ^  0xFF)
+            self.registers[self.reg] = self.registers[self.reg] & ((self.bitsval[b]) ^  0xFF)
             
 class Registers(dict):
     def __init__(self, *arg, **kw):

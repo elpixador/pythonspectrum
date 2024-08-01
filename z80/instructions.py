@@ -1,7 +1,6 @@
 import copy
 import logging
 from . util import *
-import sys
 
 class instruction(object):
     def __init__(self, opcode_args, n_operands, string, tstates=1):
@@ -64,9 +63,9 @@ class InstructionSet():
         for i in dir(self):
             f = getattr(self, i)
             if f.__class__ == Instruction:
-                print (i, ":")
+                #print (i, ":")
                 for o in f.opcode_args:
-                    print (o)
+                    #print (o)
                     ff = copy.copy(f)
                     ff.registers = self._registers
                     ff.args = o[1]
