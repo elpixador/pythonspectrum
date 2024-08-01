@@ -221,8 +221,11 @@ class Border:
         main_screen.fill(self.color,rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
 
 class ZXScreen():
+    DEFAULT_SCALE = 3
+    MAXSCALE = 5
+
     def __init__(self):
-        self.scale = DEFAULT_SCALE
+        self.scale = self.DEFAULT_SCALE
         # border color, default value for ROM, white
         self.bcolor = 7 
         # visibility of the screen
@@ -272,11 +275,18 @@ class ZXScreen():
     def draw_gui(self):
         self.gui_manager.draw_ui(self.screen) # type: ignore
 
+    def update_screen(self, surface):
+        self.screen.blit(surface, (MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT)) # type: ignore
+
     def get_scale(self):
         return self.scale
     
     def set_scale(self, scale):
         self.scale = scale
+    
+    def scale_up(self):
+        # increases scale between 1 and MAXSCALE
+        self.scale = (self.scale % self.MAXSCALE) + 1
     
     def get_bcolor(self): # border color
         return self.bcolor
@@ -613,8 +623,7 @@ def initgfx():
 print("Platform is: ", platform.system())
 ROM = "jocs/spectrum.rom"
 SCALE = 3 # to be deprecated
-DEFAULT_SCALE = 3
-MAXSCALE = 5
+
 ZX_RES = WIDTH, HEIGHT = 256, 192
 MARGIN = 60 
 UI_HEIGHT = 20
@@ -645,7 +654,7 @@ main_screen.draw_gui()
 
 # Set up the ZX Spectrum screen surfaces (unscaled and scaled)
 zx_screen = pygame.Surface(ZX_RES) 
-zx_scaled = pygame.Surface((WIDTH * SCALE, HEIGHT * SCALE)) 
+zx_scaled = pygame.Surface((WIDTH * main_screen.get_scale(), HEIGHT * main_screen.get_scale())) 
 
 clock.tick(50)
 is_running = True
@@ -681,15 +690,15 @@ while is_running:
                 k = pygameKeys[event.scancode]
                 keysSpectrum[k[0]] = keysSpectrum[k[0]] | k[1]
 
-        elif event.type == pygame.QUIT or (event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element ==b_quit_game):
+        elif event.type == pygame.QUIT or (event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == main_screen.b_quit_game):
             worker.stop()
             quit_app()
 
-        elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_load_game:
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == main_screen.b_load_game:
             is_running = False
             file_requester = pygame_gui.windows.UIFileDialog(
                 pygame.Rect(MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT,WIDTH*SCALE,HEIGHT*SCALE),
-                gui_manager,
+                main_screen.gui_manager,
                 window_title='Open file...',
                 initial_file_path='./jocs/',
                 allow_picking_directories=True,
@@ -700,7 +709,7 @@ while is_running:
             #gui_manager.draw_ui(main_screen)
             is_running = True
             
-        elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_scale_game:
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == main_screen.b_scale_game:
             is_running = False
             SCALE += 1
             if SCALE == MAXSCALE+1:
@@ -718,8 +727,8 @@ while is_running:
     # Update only changed parts of the display
     zx_scaled = pygame.transform.scale(zx_screen, (WIDTH * SCALE, HEIGHT * SCALE))
     main_screen.blit(zx_scaled, (MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT))
-    gui_manager.update(time_delta)
-    gui_manager.draw_ui(main_screen)
+    main_screen.gui_manager.update(time_delta) # type: ignore
+    main_screen.gui_manager.draw_gui() # type: ignore
 
     pygame.display.update()
 
