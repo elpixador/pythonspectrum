@@ -226,8 +226,8 @@ class ZXScreen():
 
     def __init__(self):
         self.scale = self.DEFAULT_SCALE
-        # border color, default value for ROM, white
-        self.bcolor = 7 
+        # border color
+        self.bcolor = 0 
         # visibility of the screen
         self.visible = False
         # window name
@@ -235,48 +235,33 @@ class ZXScreen():
         # app icon
         self.icon = "./window.png"
         # placeholders for screen and gui_manager
-        self.screen = None
-        self.gui_manager = None
         
         # basic initializations
         pygame.init()
         pygame.display.set_caption(self.caption)
         pygame.display.set_icon(pygame.image.load(self.icon))
         self._init_screen()
-        self._init_gui()
+        self.draw_border(7) # white, default screen
 
     def _init_screen(self):
         # init main screen to fit it all (spectrum, border & gui) 
         self.screen = pygame.display.set_mode((self.get_width(),self.get_height()), vsync=1)
-
-    def _init_gui(self):
-        self.gui_manager = pygame_gui.UIManager((self.get_width(), self.get_height()))
-        # width and height of each button
-        buttonWidth = 90 
-        buttonHeight = UI_HEIGHT
-        # number of buttons in the gui
-        numButtons = 3
-        # space between buttons
-        gap = 2
-        startingPoint = (self.get_width() - ((buttonWidth * numButtons) + (gap * (numButtons - 1)))) / 2
-        self.b_load_game = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((startingPoint, 1), (buttonWidth, buttonHeight)), 
-            text='Load Game', 
-            manager=self.gui_manager)
-        self.b_scale_game = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((startingPoint+buttonWidth+gap, 1), (buttonWidth, buttonHeight)), 
-            text='Scale: ' + str(self.get_scale()), 
-            manager=self.gui_manager)
-        self.b_quit_game = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((startingPoint+((buttonWidth+gap)*2), 1), (buttonWidth, buttonHeight)), 
-            text='Quit Game', 
-            manager=self.gui_manager)
-
-    def draw_gui(self):
-        self.gui_manager.draw_ui(self.screen) # type: ignore
+        # pintem un fons maco on posarem els botonets
+        fons = pygame.image.load('buttonbg.png').convert()
+        fons = pygame.transform.scale(fons, (self.get_width(), UI_HEIGHT))
+        self.screen.blit(fons,(0,0))
+        pygame.display.update()
 
     def update_screen(self, surface):
-        self.screen.blit(surface, (MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT)) # type: ignore
+        # we receive a standard zx screen 
+        # and we scale it and draw it in the main screen
+        self.screen.blit(pygame.transform.scale(surface, (WIDTH * SCALE, HEIGHT * SCALE)), (MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT)) 
+        pygame.display.update()
+
+    def draw_border(self, color):
+        if self.bcolor != color:
+            self.bcolor = color
+            self.screen.fill(colorTable[0][color],rect=(0,UI_HEIGHT,self.get_width(),self.get_height()))
 
     def get_scale(self):
         return self.scale
@@ -306,6 +291,7 @@ class ZXScreen():
     
     def get_height(self) -> int:
         return (HEIGHT + MARGIN) * self.scale + UI_HEIGHT
+
 
 # Funcions
 def quit_app():
@@ -644,17 +630,11 @@ clock = pygame.time.Clock()
 mach = Z80()
 
 # Initialize graphics and GUI
-
-"""initgfx()
-marc = Border(7) # default value"""
-
 main_screen = ZXScreen()
-main_screen.draw_gui()
 #initgfx()
 
 # Set up the ZX Spectrum screen surfaces (unscaled and scaled)
 zx_screen = pygame.Surface(ZX_RES) 
-zx_scaled = pygame.Surface((WIDTH * main_screen.get_scale(), HEIGHT * main_screen.get_scale())) 
 
 clock.tick(50)
 is_running = True
@@ -723,16 +703,8 @@ while is_running:
         #gui_manager.process_events(event)
 
     renderscreenDiff()
-    
-    # Update only changed parts of the display
-    zx_scaled = pygame.transform.scale(zx_screen, (WIDTH * SCALE, HEIGHT * SCALE))
-    main_screen.blit(zx_scaled, (MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT))
-    main_screen.gui_manager.update(time_delta) # type: ignore
-    main_screen.gui_manager.draw_gui() # type: ignore
+    main_screen.update_screen(zx_screen)
 
-    pygame.display.update()
-
-    
 
 
 quit_app()
