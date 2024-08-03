@@ -89,6 +89,8 @@ class portFE(io.IO):
         #cal cridar la funció que toca per el so
 
         #audioword = 0x0000
+        global nborder,  contaudio, bufferlen, bufaudio, audioword
+
         if((value & 0b00010000) >> 4):
             audioword = 256
         else:
@@ -121,8 +123,6 @@ class Z80(io.Interruptable):
         self._interrupted = True
 
     def step_instruction(self, cicles):
-        global nborder,  contaudio, bufferlen, bufaudio, audioword
-
         while cicles > 0:
             ins = False
 

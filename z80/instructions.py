@@ -5,7 +5,6 @@ from . util import *
 class instruction(object):
     def __init__(self, opcode_args, n_operands, string, tstates=1):
         self.string = string
-        self.super_op = 0
         #op_args = []
         #for i in opcode_args:
         ##super_op = i[0] >> 8
@@ -25,7 +24,6 @@ class instruction(object):
 class Instruction(object):
     def __init__(self, ins, executer):
         self.string = ins.string
-        self.super_op = ins.super_op
         self.opcode_args = ins.opcode_args
         self.n_operands = ins.n_operands
         self.tstates = ins.tstates
@@ -101,7 +99,7 @@ class InstructionSet():
                             d[i] = {}
                             d = d[i]                    
                     if (opargs[0][0] in [0xCB, 0xED, 0xDD, 0xFD]):
-                        if (opargs[0][0] in [0xDD, 0xFD]) & (opargs[0][1] == 0xCB): ff.incrementR = 3
+                        if (opargs[0][0] in [0xDD, 0xFD]) and (opargs[0][1] == 0xCB): ff.incrementR = 3
                         else: ff.incrementR = 2
                     else: ff.incrementR = 1
                     if opargs[0][-1] == "-":
