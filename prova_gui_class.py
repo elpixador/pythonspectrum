@@ -10,7 +10,6 @@ from pygame_gui.core.utility import create_resource_path
 from z80 import util, io, registers, instructions
 
 # variables, estructures i coses
-mem = bytearray(65536)
 colorTable = (  # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour_palette
     (
         0x000000,
@@ -115,7 +114,7 @@ class Z80(io.Interruptable):
     def __init__(self):
         self.registers = registers.Registers()
         self.instructions = instructions.InstructionSet(self.registers)
-        self._memory = mem
+        self._memory = io.ZXmem
         io.ZXports = io.IOMap()
         io.ZXports.addDevice(portFE())
         self._iomap = io.ZXports
@@ -156,56 +155,18 @@ class Z80(io.Interruptable):
             for n, i in enumerate(rd):
                 data[n] = self._memory[i]
 
-            wrt = ins.execute(data, args)
+            wrt = ins.execute(args)
 
             for i in wrt:
                 adr = i[0]
-                if adr >= 0x10000:
-                    address = adr & 0xFF
+                if (adr > 23295): self._memory[adr] = i[1] # RAM normal
+                elif ((adr > 16383) and (self._memory[adr] != i[1])): # És pantalla i ha canviat?
+                    self._memory[adr] = i[1]
+                    if (adr < 22528): # Patrons o atributs?
+                        tilechanged[((adr & 0b0001100000000000) >> 3) | adr & 0b11111111] = True
+                    else:
+                        tilechanged[adr & 0b0000001111111111] = True
 
-                    if (address == 0xFE): # es el port 254
-                        #Bit   7   6   5   4   3   2   1   0
-                        #  +-------------------------------+
-                        #  |   |   |   | E | M |   Border  |
-                        #  +-------------------------------+
-
-                        # print((i[1] & 0b00010000) >> 4) #filtrem el bit de audio output per generar el so
-                        #cal cridar la funció que toca per el so
-
-                        #audioword = 0x0000
-                        if((i[1] & 0b00010000) >> 4):
-                            audioword = 256
-                        else:
-                            audioword = 0
-
-
-                        if (contaudio & bufferlen):
-                            sound = pygame.sndarray.make_sound(bufaudio)
-                            sound.play()
-                            contaudio=0
-                            bufaudio = numpy.zeros((bufferlen, 2), dtype = numpy.int16)
-                        else:
-                            bufaudio[contaudio][0] = audioword # left
-                            bufaudio[contaudio][1] = audioword  # right
-                            contaudio = contaudio + 1
-
-                    #gestio del color del borde
-                        main_screen.set_bcolor(i[1] & 0b00000111)
-                        print("OA!",main_screen.bcolor)  # no s'executa mai
-                    
-                    #iomap.address[address].write.emit(address, i[1])
-                    #self._iomap.address[address].write(address, i[1])
-                    #print (chr(i[1]))
-                else:
-                    if (adr > 16383): # Només escrivim a la RAM
-                        # Caché per a renderscreenDiff
-                        if ((adr < 23296) and (self._memory[adr] != i[1])): # És pantalla i ha canviat?
-                            if (adr < 22528): # Patrons o atributs?
-                                tilechanged[((adr & 0b0001100000000000) >> 3) | adr & 0b11111111] = True
-                            else:
-                                tilechanged[adr & 0b0000001111111111] = True
-                        # Escrivim
-                        self._memory[adr] = i[1]
             cicles -= ins.tstates
 
         return cicles
@@ -364,7 +325,7 @@ def readROM():
     dir = 0
     data = f.read(1)
     while data:
-        mem[dir] = int.from_bytes(data, byteorder="big", signed=False)
+        io.ZXmem[dir] = int.from_bytes(data, byteorder="big", signed=False)
         dir = dir + 1
         data = f.read(1)
     f.close()
@@ -378,7 +339,7 @@ def memFromFile(aFile):
    dir = 16384
    data = aFile.read(1)
    while (data):
-      mem[dir] = int.from_bytes(data, byteorder='big', signed=False)
+      io.ZXmem[dir] = int.from_bytes(data, byteorder='big', signed=False)
       dir = dir + 1
       data = aFile.read(1)
 
@@ -394,12 +355,12 @@ def memFromPackedFile(aFile, aInici, aLongitud):
          if (cops == 0): break
          bb = byteFromFile(aFile)
          for i in range(cops):
-            if dir <= 0xFFFF: mem[dir] = bb
+            if dir <= 0xFFFF: io.ZXmem[dir] = bb
             dir += 1
          aLongitud -= 2
          old = 0
       else:
-         if dir <= 0xFFFF: mem[dir] = bb
+         if dir <= 0xFFFF: io.ZXmem[dir] = bb
          old = bb
          dir += 1
 
@@ -575,10 +536,10 @@ def renderline(y, adr_pattern):
     adr_attributs = 22528 + ((y >> 3) * 32)
     x = 0
     for col in range(32):
-        ink, paper = decodecolor(mem[adr_attributs])
+        ink, paper = decodecolor(io.ZXmem[adr_attributs])
         b = 0b10000000
         while b > 0:
-            if (mem[adr_pattern] & b) == 0:
+            if (io.ZXmem[adr_pattern] & b) == 0:
                 zx_screen.set_at((x, y), paper)
             else:
                 zx_screen.set_at((x, y), ink)
@@ -598,15 +559,16 @@ def renderscreenFull():
 def renderscreenDiff():
     for p in range(0, 768):
         if tilechanged[p] == True:
-            ink, paper = decodecolor(mem[22528 + p])
+            ink, paper = decodecolor(io.ZXmem[22528 + p])
             # 000 tt zzz yyy xxxxx
             adr_pattern = 16384 + ((p & 0b0000001100000000) << 3) + (p & 0b11111111)
             y = (p >> 5) * 8
             for offset in range(0, 2048, 256):
+                m = io.ZXmem[adr_pattern + offset]
                 x = (p & 0b00011111) * 8
                 b = 0b10000000
                 while b > 0:
-                    if (mem[adr_pattern + offset] & b) == 0:
+                    if (m & b) == 0:
                         zx_screen.set_at((x, y), paper)
                     else:
                         zx_screen.set_at((x, y), ink)
@@ -687,7 +649,7 @@ while is_running:
     if (conta & 0b00011111) == 0:
         flashReversed = not flashReversed
         for p in range(0, 768):
-            if (mem[22528 + p] & 0b10000000) != 0:
+            if (io.ZXmem[22528 + p] & 0b10000000) != 0:
                 tilechanged[p] = True
 
     time_delta = clock.tick(60)/1000.0

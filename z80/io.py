@@ -1,4 +1,5 @@
 ZXports = None # el poso aquí per a que sigui global
+ZXmem = bytearray(65536)
 
 class IO(object):
     _addresses = []

@@ -35,8 +35,8 @@ class Instruction(object):
         return self.executer(*((self, self.registers, True, None) + self.args +
                                tuple([operands[i] for i in self.operands]) ))
 
-    def execute(self, data=None, operands=()):
-        return self.executer(*((self, self.registers, False, data) + self.args +
+    def execute(self, operands=()):
+        return self.executer(*((self, self.registers, False, None) + self.args +
                                tuple([operands[i] for i in self.operands]) ))
 
     def assembler(self, operands=()):
@@ -246,9 +246,9 @@ class InstructionSet():
                  0, "LD {0}, (HL)", 7)
     def ld_r_hl(instruction, registers, get_reads, data, r):
         if get_reads:
-            return [registers.H << 8 | registers.L]
+            return []
         else:
-            registers[r] = data[0]
+            registers[r] = io.ZXmem[registers.H << 8 | registers.L]
             return []
 
     @instruction([([0xDD, 0x7E, '-'], ("A", "IX")), ([0xDD, 0x46, '-'], ("B", "IX")),
@@ -262,9 +262,9 @@ class InstructionSet():
                   1, "LD {0}, ({1}+{2:X}H)", 19)
     def ld_r_i_d(instruction, registers, get_reads, data, r, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            registers[r] = data[0]
+            registers[r] = io.ZXmem[registers[i] + get_8bit_twos_comp(d)]
             return []
 
     @instruction([(0x77, ("A", )), (0x70, ("B", )), (0x71, ("C", )), (0x72, ("D", )), (0x73, ("E", )), (0x74, ("H", )),
@@ -310,18 +310,18 @@ class InstructionSet():
                  0, "LD A, ({0}{1})", 7)
     def ld_a_rr(instruction, registers, get_reads, data, r, r2):
         if get_reads:
-            return [registers[r] << 8 | registers[r2]]
+            return []
         else:
-            registers.A = data[0]
+            registers.A = io.ZXmem[registers[r] << 8 | registers[r2]]
             return []
 
     @instruction([([0x3A, '-', '-'], ())],
                  2, "LD A, ({1:x}{0:X}H)", 13)
     def ld_a_nn(instruction, registers, get_reads, data, n, n2):
         if get_reads:
-            return [n2 << 8 | n]
+            return []
         else:
-            registers.A = data[0]
+            registers.A = io.ZXmem[n2 << 8 | n]
             return []
 
 
@@ -371,10 +371,10 @@ class InstructionSet():
                  2, "LD {0}{1}, ({3:X}{2:X}H)", 20)
     def ld_dd_nn_(instruction, registers, get_reads, data, r, r_, n, n_):
         if get_reads:
-            return [n_ << 8 | n, (n_ << 8 | n) + 1]
+            return []
         else:
-            registers[r] = data[1]
-            registers[r_] = data[0]
+            registers[r] = io.ZXmem[(n_ << 8 | n) + 1]
+            registers[r_] = io.ZXmem[n_ << 8 | n]
             return []
 
     @instruction([([0xDD, 0x2A, '-', '-'], ("IX", )), ([0xFD, 0x2A, '-', '-'], ("IY", )),
@@ -382,9 +382,9 @@ class InstructionSet():
                  2, "LD {0}, ({2:X}{1:X}H)", 20)
     def ld_D_nn_(instruction, registers, get_reads, data, r, n, n2):
         if get_reads:
-            return [n2 << 8 | n, (n2 << 8 | n) + 1]
+            return []
         else:
-            registers[r] = data[1] << 8 | data[0]
+            registers[r] = io.ZXmem[(n2 << 8 | n) + 1] << 8 | io.ZXmem[n2 << 8 | n]
             return []
 
 
@@ -455,12 +455,12 @@ class InstructionSet():
                  0, "POP {0}{1}", 10)
     def pop_qq(instruction, registers, get_reads, data, q, q2):
         if get_reads:
-            stack = registers.SP
-            return [stack, stack + 1]
+            return []
         else:
-            registers.SP = (registers.SP + 2) & 0xFFFF
-            registers[q2] = data[0]
-            registers[q] = data[1]
+            stack = registers.SP
+            registers.SP = (stack + 2) & 0xFFFF
+            registers[q2] = io.ZXmem[stack]
+            registers[q] = io.ZXmem[stack + 1]
             return []
 
 
@@ -468,11 +468,11 @@ class InstructionSet():
                  0, "POP {0}", 14)
     def pop_i(instruction, registers, get_reads, data, i):
         if get_reads:
-            stack = registers.SP
-            return [stack, stack + 1]
+            return []
         else:
-            registers.SP = (registers.SP + 2) & 0xFFFF
-            registers[i] = data[1] << 8 | data[0]
+            stack = registers.SP
+            registers.SP = (stack + 2) & 0xFFFF
+            registers[i] = io.ZXmem[stack + 1] << 8 | io.ZXmem[stack]
             return []
 
     #----------------------------------------------------------------------
@@ -512,32 +512,33 @@ class InstructionSet():
     @instruction([(0xE3, ())], 0, "EX (SP), HL", 19)
     def ex_sp__hl(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.SP, registers.SP + 1]
+            return []
         else:
             h = registers.H
             l = registers.L
-            registers.H = data[1]
-            registers.L = data[0]
-            return [(registers.SP, l), (registers.SP + 1, h)]
+            registers.H = io.ZXmem[inc16(registers.SP)]
+            registers.L = io.ZXmem[registers.SP]
+            return [(registers.SP, l), (inc16(registers.SP), h)]
 
     @instruction([(0xDDE3, ("IX", )), (0xFDE3, ("IY", ))], 0,
                  "EX (SP), {0}", 23)
     def ex_sp__i(instruction, registers, get_reads, data, i):
         if get_reads:
-            return [registers.SP, registers.SP + 1]
+            return []
         else:
             ix = registers[i]
-            registers[i] = data[1] << 8 | data[0]
+            registers[i] = io.ZXmem[inc16(registers.SP)] << 8 | io.ZXmem[registers.SP]
 
             return [(registers.SP, ix & 0xFF),
-                    (registers.SP + 1, ix >> 8)]
+                    (inc16(registers.SP), ix >> 8)]
 
     @instruction([(0xEDA0, ())], 0, "LDI", 16)
     def ldi(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.H << 8 | registers.L]
+            return []
         
         else:
+            val = io.ZXmem[registers.H << 8 | registers.L]
             de_ = de = registers.D << 8 | registers.E
             hl = registers.H << 8 | registers.L
             bc = registers.B << 8 | registers.C
@@ -558,15 +559,16 @@ class InstructionSet():
             registers.condition.PV = (bc != 0)
 
             registers.condition.N = 0
-            registers.condition.F3 = (registers.A + data[0]) & 0x08
-            registers.condition.F5 = (registers.A + data[0]) & 0x02
-            return [(de_, data[0])]
+            registers.condition.F3 = (registers.A + val) & 0x08
+            registers.condition.F5 = (registers.A + val) & 0x02
+            return [(de_, val)]
 
     @instruction([(0xEDB0, ())], 0, "LDIR", 21)
     def ldir(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.H << 8 | registers.L]
+            return []
         else:
+            val = io.ZXmem[registers.H << 8 | registers.L]
             de_ = de = registers.D << 8 | registers.E
             hl = registers.H << 8 | registers.L
             bc = registers.B << 8 | registers.C
@@ -593,16 +595,17 @@ class InstructionSet():
 
             registers.condition.PV = 0
             registers.condition.N = 0
-            registers.condition.F3 = (registers.A + data[0]) & 0x08
-            registers.condition.F5 = (registers.A + data[0]) & 0x02
-            return [(de_, data[0])]
+            registers.condition.F3 = (registers.A + val) & 0x08
+            registers.condition.F5 = (registers.A + val) & 0x02
+            return [(de_, val)]
 
 
     @instruction([(0xEDA8, ())], 0, "LDD", 16)
     def ldd(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.H << 8 | registers.L]
+            return []
         else:
+            val = io.ZXmem[registers.H << 8 | registers.L]
             de_ = de = registers.D << 8 | registers.E
             hl = registers.H << 8 | registers.L
             bc = registers.B << 8 | registers.C
@@ -622,15 +625,16 @@ class InstructionSet():
             registers.condition.H = 0
             registers.condition.PV = (bc != 0)
             registers.condition.N = 0
-            registers.condition.F3 = (registers.A + data[0]) & 0x08
-            registers.condition.F5 = (registers.A + data[0]) & 0x02
-            return [(de_, data[0])]
+            registers.condition.F3 = (registers.A + val) & 0x08
+            registers.condition.F5 = (registers.A + val) & 0x02
+            return [(de_, val)]
 
     @instruction([(0xEDB8, ())], 0, "LDDR", 16)
     def lddr(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.H << 8 | registers.L]
+            return []
         else:
+            val = io.ZXmem[registers.H << 8 | registers.L]
             de_ = de = registers.D << 8 | registers.E
             hl = registers.H << 8 | registers.L
             bc = registers.B << 8 | registers.C
@@ -657,24 +661,25 @@ class InstructionSet():
 
             registers.condition.PV = 0
             registers.condition.N = 0
-            registers.condition.F3 = (registers.A + data[0]) & 0x08
-            registers.condition.F5 = (registers.A + data[0]) & 0x02
-            return [(de_, data[0])]
+            registers.condition.F3 = (registers.A + val) & 0x08
+            registers.condition.F5 = (registers.A + val) & 0x02
+            return [(de_, val)]
 
 
     @instruction([(0xEDA1, ())], 0, "CPI", 16)
     def cpi(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
+            val = io.ZXmem[registers.HL]
             registers.HL = inc16(registers.HL)
             registers.BC = dec16(registers.BC)
 
-            subtract8(registers.A, data[0], 0, registers)
+            subtract8(registers.A, val, 0, registers)
             registers.condition.PV = registers.BC != 0
             # F3 is bit 3 of (A - (HL) - H), H 
             # F5 is bit 1 of (A - (HL) - H), H a
-            f5f3 = registers.A - data[0] -  registers.condition.H
+            f5f3 = registers.A - val -  registers.condition.H
             registers.condition.F5 = f5f3 & 0x02
             registers.condition.F3 = f5f3 & 0x08
             return []
@@ -682,12 +687,13 @@ class InstructionSet():
     @instruction([(0xEDB1, ())], 0, "CPIR", 16)
     def cpir(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
+            val = io.ZXmem[registers.HL]
             registers.HL = inc16(registers.HL)
             registers.BC = dec16(registers.BC)
 
-            res = subtract8(registers.A, data[0], 0, registers)
+            res = subtract8(registers.A, val, 0, registers)
 
             if registers.BC != 0 and res != 0:
                 registers.PC = dec16(registers.PC)
@@ -696,7 +702,7 @@ class InstructionSet():
             else:
                 instruction.tstates = 16
             registers.condition.PV = registers.BC != 0
-            f5f3 = registers.A - data[0] -  registers.condition.H
+            f5f3 = registers.A - val -  registers.condition.H
             registers.condition.F5 = f5f3 & 0x02
             registers.condition.F3 = f5f3 & 0x08
             return []
@@ -704,14 +710,15 @@ class InstructionSet():
     @instruction([(0xEDA9, ())], 0, "CPD", 16)
     def cpd(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
+            val = io.ZXmem[registers.HL]
             registers.HL = dec16(registers.HL)
             registers.BC = dec16(registers.BC)
 
-            subtract8(registers.A, data[0], 0, registers)
+            subtract8(registers.A, val, 0, registers)
             registers.condition.PV = registers.BC != 0
-            f5f3 = registers.A - data[0] -  registers.condition.H
+            f5f3 = registers.A - val -  registers.condition.H
             registers.condition.F5 = f5f3 & 0x02
             registers.condition.F3 = f5f3 & 0x08
             return []
@@ -719,12 +726,13 @@ class InstructionSet():
     @instruction([(0xEDB9, ())], 0, "CPDR", 16)
     def cpdr(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
+            val = io.ZXmem[registers.HL]
             registers.HL = dec16(registers.HL)
             registers.BC = dec16(registers.BC)
 
-            res = subtract8(registers.A, data[0], 0, registers)
+            res = subtract8(registers.A, val, 0, registers)
 
             if registers.BC != 0 and res != 0:
                 registers.PC = dec16(registers.PC)
@@ -733,7 +741,7 @@ class InstructionSet():
             else:
                 instruction.tstates = 16
             registers.condition.PV = registers.BC != 0
-            f5f3 = registers.A - data[0] -  registers.condition.H
+            f5f3 = registers.A - val -  registers.condition.H
             registers.condition.F5 = f5f3 & 0x02
             registers.condition.F3 = f5f3 & 0x08
             return []
@@ -770,18 +778,18 @@ class InstructionSet():
     @instruction([(0x86, ())], 0, "ADD A, (HL)", 7)
     def add_a_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            registers.A = add8(registers.A, data[0], 0, registers)
+            registers.A = add8(registers.A, io.ZXmem[registers.HL], 0, registers)
             return []
 
     @instruction([([0xDD, 0x86, '-'], ("IX",)),
                   ([0xFD, 0x86, '-'], ("IY",))], 1, "ADD A, ({0}+{1:X}H)", 19)
     def add_a_i_(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            registers.A = add8(registers.A, data[0], 0, registers)
+            registers.A = add8(registers.A, io.ZXmem[registers[i] + get_8bit_twos_comp(d)], 0, registers)
             return []
 
     #---- ADC ----
@@ -813,18 +821,18 @@ class InstructionSet():
     @instruction([(0x8E, ())], 0, "ADC A, (HL)", 7)
     def adc_a_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            registers.A = add8(registers.A, data[0], registers.condition.C, registers)
+            registers.A = add8(registers.A, io.ZXmem[registers.HL], registers.condition.C, registers)
             return []
 
     @instruction([([0xDD, 0x8E, '-'], ("IX",)),
                   ([0xFD, 0x8E, '-'], ("IY",))], 1, "ADC A, ({0}+{1:X}H)", 19)
     def adc_a_i_(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            registers.A = add8(registers.A, data[0], registers.condition.C, registers)
+            registers.A = add8(registers.A, io.ZXmem[registers[i] + get_8bit_twos_comp(d)], registers.condition.C, registers)
             return []
 
     #---- SUB ----
@@ -856,18 +864,18 @@ class InstructionSet():
     @instruction([(0x96, ())], 0, "SUB A, (HL)", 7)
     def sub_a_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            registers.A = subtract8_check_overflow(registers.A, data[0], 0, registers)
+            registers.A = subtract8_check_overflow(registers.A, io.ZXmem[registers.HL], 0, registers)
             return []
 
     @instruction([([0xDD, 0x96, '-'], ("IX",)),
                   ([0xFD, 0x96, '-'], ("IY",))], 1, "SUB A, ({0}+{1:X}H)", 19)
     def sub_a_i_(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            registers.A = subtract8_check_overflow(registers.A, data[0], 0, registers)
+            registers.A = subtract8_check_overflow(registers.A, io.ZXmem[registers[i] + get_8bit_twos_comp(d)], 0, registers)
             return []
 
     #---- SBC ----
@@ -899,18 +907,18 @@ class InstructionSet():
     @instruction([(0x9E, ())], 0, "SBC A, (HL)", 7)
     def sbc_a_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            registers.A = subtract8_check_overflow(registers.A, data[0], registers.condition.C, registers)
+            registers.A = subtract8_check_overflow(registers.A, io.ZXmem[registers.HL], registers.condition.C, registers)
             return []
 
     @instruction([([0xDD, 0x9E, '-'], ("IX",)),
                   ([0xFD, 0x9E, '-'], ("IY",))], 1, "SBC A, ({0}+{1:X}H)", 19)
     def sbc_a_i_(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            registers.A = subtract8_check_overflow(registers.A, data[0], registers.condition.C, registers)
+            registers.A = subtract8_check_overflow(registers.A, io.ZXmem[registers[i] + get_8bit_twos_comp(d)], registers.condition.C, registers)
             return []
 
     #---- AND ----
@@ -942,18 +950,18 @@ class InstructionSet():
     @instruction([(0xa6, ())], 0, "AND (HL)", 7)
     def and_a_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            a_and_n(registers, data[0])
+            a_and_n(registers, io.ZXmem[registers.HL])
             return []
 
     @instruction([([0xDD, 0xA6, '-'], ("IX",)),
                   ([0xFD, 0xA6, '-'], ("IY",))], 1, "AND ({0}+{1:X}H)", 19)
     def and_a_i_(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            a_and_n(registers, data[0])
+            a_and_n(registers, io.ZXmem[registers[i] + get_8bit_twos_comp(d)])
             return []
 
     #---- OR ----
@@ -985,18 +993,18 @@ class InstructionSet():
     @instruction([(0xb6, ())], 0, "OR (HL)", 7)
     def or_a_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            a_or_n(registers, data[0])
+            a_or_n(registers, io.ZXmem[registers.HL])
             return []
 
     @instruction([([0xDD, 0xB6, '-'], ("IX",)),
                   ([0xFD, 0xB6, '-'], ("IY",))], 1, "OR ({0}+{1:X}H)", 19)
     def or_a_i_(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            a_or_n(registers, data[0])
+            a_or_n(registers, io.ZXmem[registers[i] + get_8bit_twos_comp(d)])
             return []
 
     #---- XOR ----
@@ -1028,18 +1036,18 @@ class InstructionSet():
     @instruction([(0xae, ())], 0, "XOR (HL)", 7)
     def xor_a_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            a_xor_n(registers, data[0])
+            a_xor_n(registers, io.ZXmem[registers.HL])
             return []
 
     @instruction([([0xDD, 0xAE, '-'], ("IX",)),
                   ([0xFD, 0xAE, '-'], ("IY",))], 1, "XOR ({0}+{1:X}H)", 19)
     def xor_a_i_(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            a_xor_n(registers, data[0])
+            a_xor_n(registers, io.ZXmem[registers[i] + get_8bit_twos_comp(d)])
             return []
 
     #---- CP ----
@@ -1073,20 +1081,22 @@ class InstructionSet():
     @instruction([(0xbe, ())], 0, "CP (HL)", 7)
     def cp_a_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            subtract8_check_overflow(registers.A, data[0], 0, registers)
-            set_f5_f3(registers, data[0])
+            val = io.ZXmem[registers.HL]
+            subtract8_check_overflow(registers.A, val, 0, registers)
+            set_f5_f3(registers, val)
             return []
 
     @instruction([([0xDD, 0xBE, '-'], ("IX",)),
                   ([0xFD, 0xBE, '-'], ("IY",))], 1, "CP ({0}+{1:X}H)", 19)
     def cp_a_i_(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            subtract8_check_overflow(registers.A, data[0], 0, registers)
-            set_f5_f3(registers, data[0])
+            val = io.ZXmem[registers[i] + get_8bit_twos_comp(d)]
+            subtract8_check_overflow(registers.A, val, 0, registers)
+            set_f5_f3(registers, val)
             return []
 
     #---- INC s ----    
@@ -1109,18 +1119,18 @@ class InstructionSet():
     @instruction([(0x34, ())], 0, "INC (HL)", 11)
     def inc_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            new = add8(data[0], 1, 0, registers, C=False )
+            new = add8(io.ZXmem[registers.HL], 1, 0, registers, C=False )
             return [(registers.HL, new)]
 
     @instruction([([0xDD, 0x34, '-'], ("IX",)),
                   ([0xFD, 0x34, '-'], ("IY",))], 1, "INC ({0}+{1:X}H)", 23)
     def inc_i_(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            new = add8(data[0], 1, 0, registers, C=False )
+            new = add8(io.ZXmem[registers[i] + get_8bit_twos_comp(d)], 1, 0, registers, C=False )
             return [(registers[i] + get_8bit_twos_comp(d), new)]
 
 
@@ -1145,20 +1155,22 @@ class InstructionSet():
     @instruction([(0x35, ())], 0, "DEC (HL)", 11)
     def dec_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            new = subtract8(data[0], 1, 0, registers)
-            registers.condition.PV = (data[0] == 0x80)
+            val = io.ZXmem[registers.HL]
+            new = subtract8(val, 1, 0, registers)
+            registers.condition.PV = (val == 0x80)
             return [(registers.HL, new)]
 
     @instruction([([0xDD, 0x35, '-'], ("IX",)),
                   ([0xFD, 0x35, '-'], ("IY",))], 1, "DEC ({0}+{1:X}H)", 23)
     def dec_i_(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            new = subtract8(data[0], 1, 0, registers)
-            registers.condition.PV = (data[0] == 0x80)
+            val = io.ZXmem[registers[i] + get_8bit_twos_comp(d)]
+            new = subtract8(val, 1, 0, registers)
+            registers.condition.PV = (val == 0x80)
             return [(registers[i] + get_8bit_twos_comp(d), new)]
 
     #--------------------------------------------------------------------
@@ -1508,9 +1520,9 @@ class InstructionSet():
                  0, "RLC (HL)", 15)
     def rlc_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            val = rotate_left_carry(registers, data[0])
+            val = rotate_left_carry(registers, io.ZXmem[registers.HL])
             set_f5_f3(registers, val)
             return [(registers.HL, val)]
 
@@ -1520,9 +1532,9 @@ class InstructionSet():
                  2, "RLC ({0}+{1:X}H)", 23)
     def rlc_i_d(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            new = rotate_left_carry(registers, data[0])
+            new = rotate_left_carry(registers, io.ZXmem[registers[i] + get_8bit_twos_comp(d)])
             set_f5_f3(registers, new)
             return [(registers[i] + get_8bit_twos_comp(d), new)]
         
@@ -1543,9 +1555,9 @@ class InstructionSet():
                  2, "RL (HL)", 15)
     def rl_hl(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            val = rotate_left(registers, data[0])
+            val = rotate_left(registers, io.ZXmem[registers.HL])
             set_f5_f3(registers, val)
             return [(registers.HL, val)]
         
@@ -1554,9 +1566,9 @@ class InstructionSet():
                  2, "RL ({0}+{1:X}H)", 23)
     def rl_i(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            val = rotate_left(registers, data[0])
+            val = rotate_left(registers, io.ZXmem[registers[i] + get_8bit_twos_comp(d)])
             set_f5_f3(registers, val)
             return [(registers[i] + get_8bit_twos_comp(d), val)]
         
@@ -1581,9 +1593,9 @@ class InstructionSet():
                  0, "RRC (HL)", 15)
     def rrc_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            val = rotate_right_carry(registers, data[0])
+            val = rotate_right_carry(registers, io.ZXmem[registers.HL])
             set_f5_f3(registers, val)
             return [(registers.HL, val)]
 
@@ -1593,9 +1605,9 @@ class InstructionSet():
                  2, "RRC ({0}+{1:X}H)", 23)
     def rrc_i_d(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            new = rotate_right_carry(registers, data[0])
+            new = rotate_right_carry(registers, io.ZXmem[registers[i] + get_8bit_twos_comp(d)])
             set_f5_f3(registers, new)
             return [(registers[i] + get_8bit_twos_comp(d), new)]
         
@@ -1616,9 +1628,9 @@ class InstructionSet():
                  2, "RR (HL)", 15)
     def rr_hl(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            val = rotate_right(registers, data[0])
+            val = rotate_right(registers, io.ZXmem[registers.HL])
             set_f5_f3(registers, val)
             return [(registers.HL, val)]
         
@@ -1627,9 +1639,9 @@ class InstructionSet():
                  2, "RR ({0}+{1:X}H)", 23)
     def rr_i(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            val = rotate_right(registers, data[0])
+            val = rotate_right(registers, io.ZXmem[registers[i] + get_8bit_twos_comp(d)])
             set_f5_f3(registers, val)
             return [(registers[i] + get_8bit_twos_comp(d), val)]
         
@@ -1654,9 +1666,9 @@ class InstructionSet():
                  0, "SLA (HL)", 15)
     def sla_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            val = shift_left(registers, data[0])
+            val = shift_left(registers, io.ZXmem[registers.HL])
             set_f5_f3(registers, val)
             return [(registers.HL, val)]
 
@@ -1666,9 +1678,9 @@ class InstructionSet():
                  2, "SLA ({0}+{1:X}H)", 23)
     def sla_i_d(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            new = shift_left(registers, data[0])
+            new = shift_left(registers, io.ZXmem[registers[i] + get_8bit_twos_comp(d)])
             set_f5_f3(registers, new)
             return [(registers[i] + get_8bit_twos_comp(d), new)]
 
@@ -1689,9 +1701,9 @@ class InstructionSet():
                  0, "SLL (HL)", 15)
     def sll_hl_(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            val = shift_left_logical(registers, data[0])
+            val = shift_left_logical(registers, io.ZXmem[registers.HL])
             set_f5_f3(registers, val)
             return [(registers.HL, val)]
 
@@ -1701,9 +1713,9 @@ class InstructionSet():
                  2, "SLL ({0}+{1:X}H)", 23)
     def sll_i_d(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            new = shift_left_logical(registers, data[0])
+            new = shift_left_logical(registers, io.ZXmem[registers[i] + get_8bit_twos_comp(d)])
             set_f5_f3(registers, new)
             return [(registers[i] + get_8bit_twos_comp(d), new)]
 
@@ -1725,9 +1737,9 @@ class InstructionSet():
                  2, "SRA (HL)", 15)
     def sra_hl(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            val = shift_right(registers, data[0])
+            val = shift_right(registers, io.ZXmem[registers.HL])
             set_f5_f3(registers, val)
             return [(registers.HL, val)]
         
@@ -1736,9 +1748,9 @@ class InstructionSet():
                  2, "SRA ({0}+{1:X}H)", 23)
     def sra_i(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            val = shift_right(registers, data[0])
+            val = shift_right(registers, io.ZXmem[registers[i] + get_8bit_twos_comp(d)])
             set_f5_f3(registers, val)
             return [(registers[i] + get_8bit_twos_comp(d), val)]
         
@@ -1760,9 +1772,9 @@ class InstructionSet():
                  2, "SRL (HL)", 15)
     def srl_hl(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            val = shift_right_logical(registers, data[0])
+            val = shift_right_logical(registers, io.ZXmem[registers.HL])
             set_f5_f3(registers, val)
             return [(registers.HL, val)]
         
@@ -1771,9 +1783,9 @@ class InstructionSet():
                  2, "SRL ({0}+{1:X}H)", 23)
     def srl_i(instruction, registers, get_reads, data, i, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            val = shift_right_logical(registers, data[0])
+            val = shift_right_logical(registers, io.ZXmem[registers[i] + get_8bit_twos_comp(d)])
             set_f5_f3(registers, val)
             return [(registers[i] + get_8bit_twos_comp(d), val)]
 
@@ -1782,10 +1794,11 @@ class InstructionSet():
                  2, "RLD", 18)
     def rld(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            a = (data[0] >> 4) | (registers.A & 0xF0)
-            hl = ((data[0] << 4) | (registers.A & 0x0f)) & 0xFF
+            val = io.ZXmem[registers.HL]
+            a = (val >> 4) | (registers.A & 0xF0)
+            hl = ((val << 4) | (registers.A & 0x0f)) & 0xFF
             registers.A = a
             registers.condition.S = a & 0x80
             registers.condition.Z = a == 0
@@ -1799,10 +1812,11 @@ class InstructionSet():
                  2, "RRD", 18)
     def rrd(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            a = (data[0] & 0x0F) | (registers.A & 0xF0)
-            hl = ((data[0] >> 4) | (registers.A << 4))  & 0xFF
+            val = io.ZXmem[registers.HL]
+            a = (val & 0x0F) | (registers.A & 0xF0)
+            hl = ((val >> 4) | (registers.A << 4))  & 0xFF
             registers.A = a
             registers.condition.S = a & 0x80
             registers.condition.Z = a == 0
@@ -1844,29 +1858,31 @@ class InstructionSet():
                  2, "BIT {0}, (HL)", 12)
     def bit_hl(instruction, registers, get_reads, data, bit):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            val = data[0] & (0x01 << bit)
-            registers.condition.Z = (val == 0)
+            val = io.ZXmem[registers.HL]
+            res = val & (0x01 << bit)
+            registers.condition.Z = (res == 0)
             registers.condition.H = 1
             registers.condition.N = 0
             registers.condition.PV = registers.condition.Z
-            registers.condition.S = val & 0x80
-            set_f5_f3(registers, data[0])
+            registers.condition.S = res & 0x80
+            set_f5_f3(registers, val)
             return []
 
     @instruction( [ ([I, 0xCB, '-', 0x40 + (b << 3) + 6], (Ir, b,)) for b in range(8) for I, Ir in index_bytes] ,
                  2, "BIT {1}, ({0}+{2:X}H)", 20)
     def bit_i(instruction, registers, get_reads, data, i, bit, d):
         if get_reads:
-            return [registers[i]+get_8bit_twos_comp(d)]
+            return []
         else:
-            val = data[0] & (0x01 << bit)
-            registers.condition.Z = (val == 0)
+            val = io.ZXmem[registers[i]+get_8bit_twos_comp(d)]
+            res = val & (0x01 << bit)
+            registers.condition.Z = (res == 0)
             registers.condition.H = 1
             registers.condition.N = 0
             registers.condition.PV = registers.condition.Z
-            registers.condition.S = val & 0x80
+            registers.condition.S = res & 0x80
             set_f5_f3(registers, (registers[i]+get_8bit_twos_comp(d)) >> 8)
             return []
 
@@ -1885,9 +1901,9 @@ class InstructionSet():
                  2, "SET {0}, (HL)", 15)
     def set_hl(instruction, registers, get_reads, data, bit):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            val = data[0] | (0x01 << bit)
+            val = io.ZXmem[registers.HL] | (0x01 << bit)
             return [(registers.HL, val)]
 
     @instruction( [ ([I, 0xCB, '-', 0xc0 + (b << 3) + 6], (Ir, b,))
@@ -1896,9 +1912,9 @@ class InstructionSet():
                  2, "SET {1}, ({0}+{2:X}H)", 23)
     def set_i(instruction, registers, get_reads, data, i, bit, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            val = data[0] | (0x01 << bit)
+            val = io.ZXmem[registers[i] + get_8bit_twos_comp(d)] | (0x01 << bit)
             return [(registers[i] + get_8bit_twos_comp(d), val)]
 
     @instruction([ ([0xCB, 0x80 + (b << 3) + register_bits[reg]], (b, reg))
@@ -1917,9 +1933,9 @@ class InstructionSet():
                  2, "RES {0}, (HL)", 15)
     def res_hl(instruction, registers, get_reads, data, bit):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
-            val = data[0] & ~(0x01 << bit)
+            val = io.ZXmem[registers.HL] & ~(0x01 << bit)
             return [(registers.HL, val)]
 
     @instruction( [ ([I, 0xCB, '-', 0x80 + (b << 3) + 6], (Ir, b,))
@@ -1928,9 +1944,9 @@ class InstructionSet():
                  2, "RES {1}, ({0}+{2:X}H)", 23)
     def res_i(instruction, registers, get_reads, data, i, bit, d):
         if get_reads:
-            return [registers[i] + get_8bit_twos_comp(d)]
+            return []
         else:
-            val = data[0] & ~(0x01 << bit)
+            val = io.ZXmem[registers[i] + get_8bit_twos_comp(d)] & ~(0x01 << bit)
             return [(registers[i] + get_8bit_twos_comp(d), val)]
 
 
@@ -2087,10 +2103,11 @@ class InstructionSet():
                  2, "RET", 10)
     def ret(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.SP, inc16(registers.SP)]
+            return []
         else:
-            registers.SP = (registers.SP + 2) & 0xFFFF
-            registers.PC = data[1] << 8 | data[0]
+            sp = registers.SP
+            registers.SP = (sp + 2) & 0xFFFF
+            registers.PC = io.ZXmem[inc16(sp)] << 8 | io.ZXmem[sp]
             return []
         
     @instruction([([0xC0+offset], (reg, reg_name, val))
@@ -2098,11 +2115,12 @@ class InstructionSet():
                  2, "RET {1}", 11)
     def ret_c(instruction, registers, get_reads, data, reg, reg_name, val):
         if get_reads:
-            return [registers.SP, inc16(registers.SP)]
+            return []
         else:
             if getattr(registers.condition, reg) == val:
-                registers.SP = (registers.SP + 2) & 0xFFFF
-                registers.PC = data[1] << 8 | data[0]
+                sp = registers.SP
+                registers.SP = (sp + 2) & 0xFFFF
+                registers.PC = io.ZXmem[inc16(sp)] << 8 | io.ZXmem[sp]
                 instruction.tstates = 11
             else:
                 instruction.tstates = 5
@@ -2111,12 +2129,13 @@ class InstructionSet():
     @instruction([([0xed, 0x4d], ())],  2, "RETI", 14)
     def reti(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.SP, inc16(registers.SP)]
+            return []
         else:
             #TODO: implement return from interrupt
             #logging.warn("RETI not fully implemented")
-            registers.SP = (registers.SP + 2) & 0xFFFF
-            registers.PC = data[1] << 8 | data[0]
+            sp = registers.SP
+            registers.SP = (sp + 2) & 0xFFFF
+            registers.PC = io.ZXmem[inc16(sp)] << 8 | io.ZXmem[sp]
             return []
         
     @instruction([([0xed, 0x45], ())],  2, "RETN", 14)
@@ -2126,8 +2145,9 @@ class InstructionSet():
         else:
             #TODO: implement from non masked interrupt
             logging.warn("RETN not fully implemented")
-            registers.SP = (registers.SP + 2) & 0xFFFF
-            registers.PC = data[1] << 8 | data[0]
+            sp = registers.SP
+            registers.SP = (sp + 2) & 0xFFFF
+            registers.PC = io.ZXmem[inc16(sp)] << 8 | io.ZXmem[sp]
             registers.IFF = registers.IFF2
             return []
         
@@ -2279,14 +2299,15 @@ class InstructionSet():
                  2, "OUTI", 16)
     def outi(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
+            val = io.ZXmem[registers.HL]
             address = registers.C | (registers.B << 8)
             registers.B = dec8(registers.B)
             registers.HL = inc16(registers.HL)
             registers.condition.N = 1
             registers.condition.Z = registers.B == 0
-            io.ZXports.write(address, data[0])
+            io.ZXports.write(address, val)
             return []
         
         
@@ -2294,9 +2315,10 @@ class InstructionSet():
                  2, "OTIR", 21)
     def otir(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
             address = registers.C | (registers.B << 8)
+            val = io.ZXmem[registers.HL]
             registers.B = dec8(registers.B)
             registers.HL = inc16(registers.HL)
             registers.condition.N = 1
@@ -2308,21 +2330,22 @@ class InstructionSet():
             else:
                 instruction.tstates = 16
                 
-            io.ZXports.write(registers.BC, data[0])
+            io.ZXports.write(registers.BC, val)
             return []
         
     @instruction([([0xed, 0xab], ( )) ] ,
                  2, "OUTD", 16)
     def outd(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
             address = registers.C | (registers.B << 8)
+            val = io.ZXmem[registers.HL]
             registers.B = dec8(registers.B)
             registers.HL = dec16(registers.HL)
             registers.condition.N = 1
             registers.condition.Z = registers.B == 0
-            io.ZXports.write(registers.BC, data[0])
+            io.ZXports.write(registers.BC, val)
             return []
         
         
@@ -2330,9 +2353,10 @@ class InstructionSet():
                  2, "OTDR", 21)
     def otdr(instruction, registers, get_reads, data):
         if get_reads:
-            return [registers.HL]
+            return []
         else:
             address = registers.C | (registers.B << 8)
+            val = io.ZXmem[registers.HL]
             registers.B = dec8(registers.B)
             registers.HL = dec16(registers.HL)
             registers.condition.N = 1
@@ -2344,5 +2368,5 @@ class InstructionSet():
             else:
                 instruction.tstates = 16
                 
-            io.ZXports.write(registers.BC, data[0])
+            io.ZXports.write(registers.BC, val)
             return []
