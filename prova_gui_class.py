@@ -1,3 +1,4 @@
+from ast import main
 import sys, os, threading, platform
 import numpy
 import pygame
@@ -159,15 +160,51 @@ class Z80(io.Interruptable):
 
             for i in wrt:
                 adr = i[0]
-                if (adr > 16383): # Només escrivim a la RAM
-                    # Caché per a renderscreenDiff
-                    if ((adr < 23296) and (self._memory[adr] != i[1])): # És pantalla i ha canviat?
-                        if (adr < 22528): # Patrons o atributs?
-                            tilechanged[((adr & 0b0001100000000000) >> 3) | adr & 0b11111111] = True
+                if adr >= 0x10000:
+                    address = adr & 0xFF
+
+                    if (address == 0xFE): # es el port 254
+                        #Bit   7   6   5   4   3   2   1   0
+                        #  +-------------------------------+
+                        #  |   |   |   | E | M |   Border  |
+                        #  +-------------------------------+
+
+                        # print((i[1] & 0b00010000) >> 4) #filtrem el bit de audio output per generar el so
+                        #cal cridar la funció que toca per el so
+
+                        #audioword = 0x0000
+                        if((i[1] & 0b00010000) >> 4):
+                            audioword = 256
                         else:
-                            tilechanged[adr & 0b0000001111111111] = True
-                    # Escrivim
-                    self._memory[adr] = i[1]
+                            audioword = 0
+
+
+                        if (contaudio & bufferlen):
+                            sound = pygame.sndarray.make_sound(bufaudio)
+                            sound.play()
+                            contaudio=0
+                            bufaudio = numpy.zeros((bufferlen, 2), dtype = numpy.int16)
+                        else:
+                            bufaudio[contaudio][0] = audioword # left
+                            bufaudio[contaudio][1] = audioword  # right
+                            contaudio = contaudio + 1
+
+                    #gestio del color del borde
+                        main_screen.set_bcolor(i[1] & 0b00000111) 
+                    
+                    #iomap.address[address].write.emit(address, i[1])
+                    #self._iomap.address[address].write(address, i[1])
+                    #print (chr(i[1]))
+                else:
+                    if (adr > 16383): # Només escrivim a la RAM
+                        # Caché per a renderscreenDiff
+                        if ((adr < 23296) and (self._memory[adr] != i[1])): # És pantalla i ha canviat?
+                            if (adr < 22528): # Patrons o atributs?
+                                tilechanged[((adr & 0b0001100000000000) >> 3) | adr & 0b11111111] = True
+                            else:
+                                tilechanged[adr & 0b0000001111111111] = True
+                        # Escrivim
+                        self._memory[adr] = i[1]
             cicles -= ins.tstates
 
         return cicles
@@ -205,66 +242,63 @@ class Worker:
         self.start()
         print("Worker restarted")
 
-class Border:
-    def __init__(self, color):
-        self.color = color
-        self.__pinta()
-
-    def get_color(self):
-        return self.color
-    
-    def set_color(self, color):
-        self.color = color
-        self.__pinta()
-    
-    def update(self):
-        self.__pinta()
-
-    def __pinta(self):
-        main_screen.fill(self.color,rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
-
-class ZXScreen():
+class Screen():
     DEFAULT_SCALE = 3
     MAXSCALE = 5
 
     def __init__(self):
         self.scale = self.DEFAULT_SCALE
+        # margin (unscaled)
+        self.margin = 40
+        # margin (scaled)
+        self.smargin = self.get_smargin()
+        # dimensions of app window (all scaled: ui, border + internal zx)
+        self.dimensions = self.width, self.height = self.get_width(), self.get_height()
+        print (self.dimensions)
+        # dimensions of internal surface for scaled zx screen 
+        self.indimensions = self.inwidth, self.inheight = self.get_inwidth(), self.get_inheight()
+        print (self.indimensions)
+
         # border color
         self.bcolor = 0 
-        # visibility of the screen
-        self.visible = False
         # window name
         self.caption = "Pythonspectrum"
         # app icon
         self.icon = "./window.png"
         # placeholders for screen and gui_manager
-        
-        # basic initializations
+        self.screen = None
+
         pygame.init()
+        # basic initializations
         pygame.display.set_caption(self.caption)
         pygame.display.set_icon(pygame.image.load(self.icon))
+
         self._init_screen()
         self.draw_border(7) # white, default screen
+        pygame.display.update()
 
     def _init_screen(self):
         # init main screen to fit it all (spectrum, border & gui) 
-        self.screen = pygame.display.set_mode((self.get_width(),self.get_height()), vsync=1)
+        print(self.width)
+        self.screen = pygame.display.set_mode(self.dimensions, vsync=1)
         # pintem un fons maco on posarem els botonets
         fons = pygame.image.load('buttonbg.png').convert()
-        fons = pygame.transform.scale(fons, (self.get_width(), UI_HEIGHT))
+        fons = pygame.transform.scale(fons, (self.width, UI_HEIGHT))
         self.screen.blit(fons,(0,0))
         pygame.display.update()
 
     def update_screen(self, surface):
         # we receive a standard zx screen 
         # and we scale it and draw it in the main screen
-        self.screen.blit(pygame.transform.scale(surface, (WIDTH * SCALE, HEIGHT * SCALE)), (MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT)) 
+        # condicional cas que fora necessari canviar el borde
+        self.draw_border(self.bcolor)
+        self.screen.blit(pygame.transform.scale(surface, self.indimensions), (self.smargin,self.smargin+UI_HEIGHT)) 
         pygame.display.update()
 
     def draw_border(self, color):
         if self.bcolor != color:
             self.bcolor = color
-            self.screen.fill(colorTable[0][color],rect=(0,UI_HEIGHT,self.get_width(),self.get_height()))
+            self.screen.fill(colorTable[0][color],rect=(0,UI_HEIGHT,self.width,self.height))
 
     def get_scale(self):
         return self.scale
@@ -275,26 +309,37 @@ class ZXScreen():
     def scale_up(self):
         # increases scale between 1 and MAXSCALE
         self.scale = (self.scale % self.MAXSCALE) + 1
-    
+        print("I'm here")
+        self.dimensions= self.get_dimensions()
+        self._init_screen()
+        self.draw_border(self.bcolor)
+
     def get_bcolor(self): # border color
         return self.bcolor
     
     def set_bcolor(self, color):
         self.bcolor = color
     
-    def get_visibility(self):
-        # return the boolean if it's visible
-        pass
-    
-    def set_visibility(self, visible):
-        self.get_visibility = visible
+    def get_dimensions(self):
+        return self.get_width(), self.get_height()
 
     def get_width(self) -> int:
-        return (WIDTH + MARGIN) * self.scale
+        return self.get_inwidth() + (self.get_smargin() * 2)
     
     def get_height(self) -> int:
-        return (HEIGHT + MARGIN) * self.scale + UI_HEIGHT
+        return self.get_inheight() + (self.get_smargin() * 2) + UI_HEIGHT
 
+    def get_inwidth(self) -> int:
+        return ZXWIDTH * self.scale
+    
+    def get_inheight(self) -> int:
+        return ZXHEIGHT * self.scale
+    
+    def get_smargin(self) -> int:
+        return (self.margin * self.scale)
+
+    def set_margin(self, margin):
+        self.margin = margin
 
 # Funcions
 def quit_app():
@@ -544,13 +589,13 @@ def renderscreenFull():
         renderline(y, dir + offset)
 
 
-
 def renderscreenDiff():
     """global border, nborder
     if (border != nborder):
         border = nborder
         main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
 """
+
     for p in range(0, 768):
         if tilechanged[p] == True:
             ink, paper = decodecolor(mem[22528 + p])
@@ -570,19 +615,8 @@ def renderscreenDiff():
                 y += 1
             tilechanged[p] = False
 
-def initgfx():
-    """pygame.init()
-    pygame.display.set_caption("Pythonspectrum")
-    pygame.display.set_icon(pygame.image.load("./window.png"))
-
-    global SCREEN_WIDTH, SCREEN_HEIGHT, main_screen
-    SCREEN_WIDTH = (WIDTH + MARGIN) * SCALE
-    SCREEN_HEIGHT = (HEIGHT + MARGIN) * SCALE + UI_HEIGHT
-    # Set up the main screen with scaling
-    main_screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT), vsync=1)"""
-
-
-"""    # Set up the UI manager and elements
+def init_gui():
+    # Set up the UI manager and elements
     global gui_manager
     gui_manager = pygame_gui.UIManager((main_screen.get_width(), main_screen.get_height()))
     buttonWidth = 90
@@ -590,30 +624,29 @@ def initgfx():
     numButtons = 3
     gap = 2
     startingPoint = (main_screen.get_width() - ((buttonWidth * numButtons) + (gap * (numButtons - 1)))) / 2
-
     global b_load_game, b_scale_game, b_quit_game
     b_load_game = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((startingPoint, 1), (buttonWidth, buttonHeight)), text='Load Game', manager=gui_manager)
+        relative_rect=pygame.Rect((startingPoint, 1), (buttonWidth, buttonHeight)), 
+        text='Load Game', 
+        manager=gui_manager)
     b_scale_game = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((startingPoint+buttonWidth+gap, 1), (buttonWidth, buttonHeight)), text='Scale: ' + str(SCALE), manager=gui_manager)
+        relative_rect=pygame.Rect((startingPoint+buttonWidth+gap, 1), (buttonWidth, buttonHeight)), 
+        text='Scale: ' + str(main_screen.get_scale()), 
+        manager=gui_manager)
     b_quit_game = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((startingPoint+((buttonWidth+gap)*2), 1), (buttonWidth, buttonHeight)), text='Quit Game', manager=gui_manager)
-    """
-    #gui_manager.draw_ui(main_screen.screen)
-"""# pintem un fons maco on posarem els botonets
-    fons = pygame.image.load('buttonbg.png').convert()
-    fons = pygame.transform.scale(fons, (main_screen.get_width(), buttonHeight))
-    main_screen.blit(fons,(0,0))
-    pygame.display.update()"""
+        relative_rect=pygame.Rect((startingPoint+((buttonWidth+gap)*2), 1), (buttonWidth, buttonHeight)), 
+        text='Quit Game', 
+        manager=gui_manager)
 
+    gui_manager.draw_ui(main_screen.screen) #type: ignore
 
 # INICI
 
 print("Platform is: ", platform.system())
 ROM = "jocs/spectrum.rom"
-SCALE = 3 # to be deprecated
+#SCALE = 3 # to be deprecated
 
-ZX_RES = WIDTH, HEIGHT = 256, 192
+ZX_RES = ZXWIDTH, ZXHEIGHT = 256, 192
 MARGIN = 60 
 UI_HEIGHT = 20
 
@@ -633,8 +666,8 @@ clock = pygame.time.Clock()
 mach = Z80()
 
 # Initialize graphics and GUI
-main_screen = ZXScreen()
-#initgfx()
+main_screen = Screen()
+init_gui()
 
 # Set up the ZX Spectrum screen surfaces (unscaled and scaled)
 zx_screen = pygame.Surface(ZX_RES) 
@@ -669,15 +702,15 @@ while is_running:
         elif event.type == pygame.KEYUP:
             mach._iomap.keyrelease(event.scancode)
 
-        elif event.type == pygame.QUIT or (event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == main_screen.b_quit_game):
+        elif event.type == pygame.QUIT or (event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_quit_game):
             worker.stop()
             quit_app()
 
-        elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == main_screen.b_load_game:
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_load_game:
             is_running = False
             file_requester = pygame_gui.windows.UIFileDialog(
-                pygame.Rect(MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT,WIDTH*SCALE,HEIGHT*SCALE),
-                main_screen.gui_manager,
+                pygame.Rect(MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT,ZXWIDTH*SCALE,ZXHEIGHT*SCALE),
+                gui_manager,
                 window_title='Open file...',
                 initial_file_path='./jocs/',
                 allow_picking_directories=True,
@@ -685,24 +718,25 @@ while is_running:
                 visible=1,
                 allowed_suffixes={""}
             )
-            #gui_manager.draw_ui(main_screen)
+            gui_manager.draw_ui(main_screen.screen)
             is_running = True
             
-        elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == main_screen.b_scale_game:
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_scale_game:
             is_running = False
-            SCALE += 1
-            if SCALE == MAXSCALE+1:
-                SCALE = 1
-            initgfx()
+            main_screen.scale_up()
+            main_screen.update_screen(zx_screen)
+            init_gui()
             is_running = True
 
         elif event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
             readSpectrumFile(create_resource_path(event.text))
  
-        #gui_manager.process_events(event)
+        gui_manager.process_events(event)
 
     renderscreenDiff()
     main_screen.update_screen(zx_screen)
+    gui_manager.update(time_delta)
+    gui_manager.draw_ui(main_screen.screen) # type: ignore
 
 
 
