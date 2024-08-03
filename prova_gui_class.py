@@ -253,14 +253,12 @@ class Screen():
         # margin (scaled)
         self.smargin = self.get_smargin()
         # dimensions of app window (all scaled: ui, border + internal zx)
-        self.dimensions = self.width, self.height = self.get_width(), self.get_height()
-        print (self.dimensions)
+        self.dimensions = self.width, self.height = self.update_dimensions()
         # dimensions of internal surface for scaled zx screen 
-        self.indimensions = self.inwidth, self.inheight = self.get_inwidth(), self.get_inheight()
-        print (self.indimensions)
-
+        self.indimensions = self.inwidth, self.inheight = self.update_indimensions()
+ 
         # border color
-        self.bcolor = 0 
+        self.bcolor = 7 # white, default screen
         # window name
         self.caption = "Pythonspectrum"
         # app icon
@@ -274,30 +272,26 @@ class Screen():
         pygame.display.set_icon(pygame.image.load(self.icon))
 
         self._init_screen()
-        self.draw_border(7) # white, default screen
         pygame.display.update()
 
     def _init_screen(self):
         # init main screen to fit it all (spectrum, border & gui) 
-        print(self.width)
-        self.screen = pygame.display.set_mode(self.dimensions, vsync=1)
+        self.screen = pygame.display.set_mode(self.dimensions, vsync=0)
         # pintem un fons maco on posarem els botonets
         fons = pygame.image.load('buttonbg.png').convert()
         fons = pygame.transform.scale(fons, (self.width, UI_HEIGHT))
         self.screen.blit(fons,(0,0))
         pygame.display.update()
 
-    def update_screen(self, surface):
+    def draw_screen(self, surface):
         # we receive a standard zx screen 
         # and we scale it and draw it in the main screen
-        # condicional cas que fora necessari canviar el borde
-        self.draw_border(self.bcolor)
+        if self.get_hwbcolor() != colorTable[0][self.bcolor]:
+            self.draw_border(self.bcolor)
         self.screen.blit(pygame.transform.scale(surface, self.indimensions), (self.smargin,self.smargin+UI_HEIGHT)) 
         pygame.display.update()
 
     def draw_border(self, color):
-        if self.bcolor != color:
-            self.bcolor = color
             self.screen.fill(colorTable[0][color],rect=(0,UI_HEIGHT,self.width,self.height))
 
     def get_scale(self):
@@ -309,19 +303,26 @@ class Screen():
     def scale_up(self):
         # increases scale between 1 and MAXSCALE
         self.scale = (self.scale % self.MAXSCALE) + 1
-        print("I'm here")
-        self.dimensions= self.get_dimensions()
+        # update scaled margin and dimensions with new scale
+        self.smargin = self.get_smargin()
+        self.dimensions = self.update_dimensions()
+        self.indimensions = self.update_indimensions()
         self._init_screen()
-        self.draw_border(self.bcolor)
 
-    def get_bcolor(self): # border color
-        return self.bcolor
+    def get_hwbcolor(self): # border color currently displayed
+        hwbcolor = '#{:02X}{:02X}{:02X}'.format(*self.screen.get_at((0,UI_HEIGHT))[:3])
+        return hwbcolor
     
+    def get_bcolor(self) -> int:
+        return self.bcolor
+
     def set_bcolor(self, color):
         self.bcolor = color
     
-    def get_dimensions(self):
-        return self.get_width(), self.get_height()
+    def update_dimensions(self):
+        self.width = self.get_width()
+        self.height = self.get_height()
+        return self.width, self.height
 
     def get_width(self) -> int:
         return self.get_inwidth() + (self.get_smargin() * 2)
@@ -329,6 +330,11 @@ class Screen():
     def get_height(self) -> int:
         return self.get_inheight() + (self.get_smargin() * 2) + UI_HEIGHT
 
+    def update_indimensions(self):
+        self.inwidth = self.get_inwidth()
+        self.inheight = self.get_inheight()
+        return self.inwidth, self.inheight
+    
     def get_inwidth(self) -> int:
         return ZXWIDTH * self.scale
     
@@ -340,6 +346,13 @@ class Screen():
 
     def set_margin(self, margin):
         self.margin = margin
+
+    def print_info(self):
+        print("Scale is: ", self.scale)
+        print("Screen dimensions: ", self.dimensions)
+        print("ZX scaled dimensions: ", self.indimensions)
+        print("Margin is: ", self.margin)
+        print("Scaled margin is: ", self.smargin)
 
 # Funcions
 def quit_app():
@@ -641,14 +654,11 @@ def init_gui():
     gui_manager.draw_ui(main_screen.screen) #type: ignore
 
 # INICI
-
 print("Platform is: ", platform.system())
-ROM = "jocs/spectrum.rom"
-#SCALE = 3 # to be deprecated
 
 ZX_RES = ZXWIDTH, ZXHEIGHT = 256, 192
-MARGIN = 60 
 UI_HEIGHT = 20
+ROM = "jocs/spectrum.rom"
 
 contaudio = 0
 
@@ -709,7 +719,7 @@ while is_running:
         elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_load_game:
             is_running = False
             file_requester = pygame_gui.windows.UIFileDialog(
-                pygame.Rect(MARGIN*SCALE/2,MARGIN*SCALE/2+UI_HEIGHT,ZXWIDTH*SCALE,ZXHEIGHT*SCALE),
+                pygame.Rect(main_screen.smargin,main_screen.smargin+UI_HEIGHT,main_screen.inwidth,main_screen.inheight),
                 gui_manager,
                 window_title='Open file...',
                 initial_file_path='./jocs/',
@@ -724,7 +734,7 @@ while is_running:
         elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_scale_game:
             is_running = False
             main_screen.scale_up()
-            main_screen.update_screen(zx_screen)
+            main_screen.draw_screen(zx_screen)
             init_gui()
             is_running = True
 
@@ -734,7 +744,7 @@ while is_running:
         gui_manager.process_events(event)
 
     renderscreenDiff()
-    main_screen.update_screen(zx_screen)
+    main_screen.draw_screen(zx_screen)
     gui_manager.update(time_delta)
     gui_manager.draw_ui(main_screen.screen) # type: ignore
 
