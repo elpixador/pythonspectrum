@@ -115,8 +115,9 @@ class Z80(io.Interruptable):
         self.registers = registers.Registers()
         self.instructions = instructions.InstructionSet(self.registers)
         self._memory = mem
-        self._iomap = io.IOMap()
-        self._iomap.addDevice(portFE())
+        io.ZXports = io.IOMap()
+        io.ZXports.addDevice(portFE())
+        self._iomap = io.ZXports
         self._interrupted = False
 
     def interrupt(self):
@@ -152,27 +153,21 @@ class Z80(io.Interruptable):
             rd = ins.get_read_list(args)
             data = [0] * len(rd)
             for n, i in enumerate(rd):
-                if i < 0x10000:
-                    data[n] = self._memory[i]
-                else:
-                    data[n] = self._iomap.read(i & 0xFFFF)
+                data[n] = self._memory[i]
 
             wrt = ins.execute(data, args)
 
             for i in wrt:
                 adr = i[0]
-                if adr >= 0x10000:
-                    self._iomap.write(adr & 0xFFFF, i[1])
-                else:
-                    if (adr > 16383): # Només escrivim a la RAM
-                        # Caché per a renderscreenDiff
-                        if ((adr < 23296) and (self._memory[adr] != i[1])): # És pantalla i ha canviat?
-                            if (adr < 22528): # Patrons o atributs?
-                                tilechanged[((adr & 0b0001100000000000) >> 3) | adr & 0b11111111] = True
-                            else:
-                                tilechanged[adr & 0b0000001111111111] = True
-                        # Escrivim
-                        self._memory[adr] = i[1]
+                if (adr > 16383): # Només escrivim a la RAM
+                    # Caché per a renderscreenDiff
+                    if ((adr < 23296) and (self._memory[adr] != i[1])): # És pantalla i ha canviat?
+                        if (adr < 22528): # Patrons o atributs?
+                            tilechanged[((adr & 0b0001100000000000) >> 3) | adr & 0b11111111] = True
+                        else:
+                            tilechanged[adr & 0b0000001111111111] = True
+                    # Escrivim
+                    self._memory[adr] = i[1]
             cicles -= ins.tstates
 
         return cicles

@@ -1,6 +1,7 @@
 import copy
 import logging
 from . util import *
+from . import io
 
 class instruction(object):
     def __init__(self, opcode_args, n_operands, string, tstates=1):
@@ -2151,51 +2152,54 @@ class InstructionSet():
                  2, "IN A, ({0:X}H)", 11)
     def in_a_n(instruction, registers, get_reads, data, n):
         if get_reads:
-            address = n | (registers.A << 8) # registers.C | (registers.B << 8)
-            return [address+0x10000]
+            return []
         else:
-            registers.A = data[0]
+            address = n | (registers.A << 8) # registers.C | (registers.B << 8)
+            registers.A = io.ZXports.read(address)
             return []
         
     @instruction([([0xEd, 0x40+(i<<3)], (r, )) for i, r in enumerate("BCDEHLFA")] ,
                  2, "IN {0}, (C)", 12)
     def in_r_c(instruction, registers, get_reads, data, r):
         if get_reads:
-            address = registers.C | (registers.B << 8) #n | (registers.A << 8)
-            return [address+0x10000]
+            return []
         else:
-            registers.condition.S = data[0] & 0x80
-            registers.condition.Z = data[0] == 0
+            address = registers.C | (registers.B << 8) #n | (registers.A << 8)
+            res = io.ZXports.read(address)
+            registers.condition.S = res & 0x80
+            registers.condition.Z = res == 0
             registers.condition.H = 0
-            registers.condition.PV = parity(data[0])
+            registers.condition.PV = parity(res)
             registers.condition.N = 0
             if r == "F":
                 return []
-            registers[r] = data[0]
+            registers[r] = res
             return []
         
     @instruction([([0xed, 0xa2], ( )) ] ,
                  2, "INI", 16)
     def ini(instruction, registers, get_reads, data):
         if get_reads:
-            address = registers.C | (registers.B << 8)
-            return [address+0x10000]
+            return []
         else:
+            address = registers.C | (registers.B << 8)
+            res = io.ZXports.read(address)
             hl = registers.HL
             registers.B = dec8(registers.B)
             registers.HL = inc16(hl)
             registers.condition.N = 1
             registers.condition.Z = registers.B == 0
-            return [(hl, data[0])]
+            return [(hl, res)]
         
         
     @instruction([([0xed, 0xb2], ( )) ] ,
                  2, "INIR", 21)
     def inir(instruction, registers, get_reads, data):
         if get_reads:
-            address = registers.C | (registers.B << 8)
-            return [address+0x10000]
+            return []
         else:
+            address = registers.C | (registers.B << 8)
+            res = io.ZXports.read(address)
             hl = registers.HL
             registers.B = dec8(registers.B)
             registers.HL = inc16(hl)
@@ -2207,30 +2211,32 @@ class InstructionSet():
                 instruction.tstates = 21
             else:
                 instruction.tstates = 16
-            return [(hl, data[0])]
+            return [(hl, res)]
         
     @instruction([([0xed, 0xaa], ( )) ] ,
                  2, "IND", 16)
     def ind(instruction, registers, get_reads, data):
         if get_reads:
-            address = registers.C | (registers.B << 8)
-            return [address+0x10000]
+            return []
         else:
+            address = registers.C | (registers.B << 8)
+            res = io.ZXports.read(address)
             hl = registers.HL
             registers.B = dec8(registers.B)
             registers.HL = dec16(hl)
             registers.condition.N = 1
             registers.condition.Z = registers.B == 0
-            return [(hl, data[0])]
+            return [(hl, res)]
         
         
     @instruction([([0xed, 0xba], ( )) ] ,
                  2, "INDR", 21)
     def indr(instruction, registers, get_reads, data):
         if get_reads:
-            address = registers.C | (registers.B << 8)
-            return [address+0x10000]
+            return []
         else:
+            address = registers.C | (registers.B << 8)
+            res = io.ZXports.read(address)
             hl = registers.HL
             registers.B = dec8(registers.B)
             registers.HL = dec16(hl)
@@ -2242,7 +2248,7 @@ class InstructionSet():
                 instruction.tstates = 21
             else:
                 instruction.tstates = 16
-            return [(hl, data[0])]
+            return [(hl, res)]
         
     @instruction([([0xD3, '-'], ( )) ] ,
                  2, "OUT ({0:X}H), A", 11)
@@ -2255,7 +2261,8 @@ class InstructionSet():
                 ##logging.info("=========================================== %s =="%chr(registers.A))
                 ##print chr(registers.A),
                 #sys.stdout.flush()
-            return [(address+0x10000, registers.A)]
+            io.ZXports.write(address, registers.A)
+            return []
         
     @instruction([([0xEd, 0x41+(i<<3)], (r, )) for i, r in enumerate("BCDEHLFA")] ,
                  2, "OUT (C), {0}", 12)
@@ -2265,7 +2272,8 @@ class InstructionSet():
         else:
             if r == "F":
                 return []
-            return [(registers.BC+0x10000, registers[r])]
+            io.ZXports.write(registers.BC, registers[r])
+            return []
         
     @instruction([([0xed, 0xa3], ( )) ] ,
                  2, "OUTI", 16)
@@ -2278,7 +2286,8 @@ class InstructionSet():
             registers.HL = inc16(registers.HL)
             registers.condition.N = 1
             registers.condition.Z = registers.B == 0
-            return [(address+0x10000, data[0])]
+            io.ZXports.write(address, data[0])
+            return []
         
         
     @instruction([([0xed, 0xb3], ( )) ] ,
@@ -2299,7 +2308,8 @@ class InstructionSet():
             else:
                 instruction.tstates = 16
                 
-            return [(registers.BC+0x10000, data[0])]
+            io.ZXports.write(registers.BC, data[0])
+            return []
         
     @instruction([([0xed, 0xab], ( )) ] ,
                  2, "OUTD", 16)
@@ -2312,7 +2322,8 @@ class InstructionSet():
             registers.HL = dec16(registers.HL)
             registers.condition.N = 1
             registers.condition.Z = registers.B == 0
-            return [(registers.BC+0x10000, data[0])]
+            io.ZXports.write(registers.BC, data[0])
+            return []
         
         
     @instruction([([0xed, 0xbb], ( )) ] ,
@@ -2333,4 +2344,5 @@ class InstructionSet():
             else:
                 instruction.tstates = 16
                 
-            return [(registers.BC+0x10000, data[0])]
+            io.ZXports.write(registers.BC, data[0])
+            return []

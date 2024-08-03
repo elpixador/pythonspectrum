@@ -1,5 +1,5 @@
-import sys
- 
+ZXports = None # el poso aquí per a que sigui global
+
 class IO(object):
     _addresses = []
     def read(self, address):
