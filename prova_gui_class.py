@@ -150,11 +150,6 @@ class Z80(io.Interruptable):
                     self.registers.PC = (self.registers.PC + 1) & 0xFFFF
                 #print("{0:X} : {1} ".format(pc, ins.assembler(args)))
 
-            rd = ins.get_read_list(args)
-            data = [0] * len(rd)
-            for n, i in enumerate(rd):
-                data[n] = self._memory[i]
-
             wrt = ins.execute(args)
 
             for i in wrt:
