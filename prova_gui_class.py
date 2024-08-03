@@ -109,7 +109,7 @@ class portFE(io.IO):
             contaudio = contaudio + 1
 
         #gestio del color del borde
-        nborder = (value & 0b00000111) 
+        main_screen.set_bcolor(value & 0b00000111) 
 
 class Z80(io.Interruptable):
     def __init__(self):
@@ -190,7 +190,8 @@ class Z80(io.Interruptable):
                             contaudio = contaudio + 1
 
                     #gestio del color del borde
-                        main_screen.set_bcolor(i[1] & 0b00000111) 
+                        main_screen.set_bcolor(i[1] & 0b00000111)
+                        print("OA!",main_screen.bcolor)  # no s'executa mai
                     
                     #iomap.address[address].write.emit(address, i[1])
                     #self._iomap.address[address].write(address, i[1])
@@ -272,7 +273,6 @@ class Screen():
         pygame.display.set_icon(pygame.image.load(self.icon))
 
         self._init_screen()
-        pygame.display.update()
 
     def _init_screen(self):
         # init main screen to fit it all (spectrum, border & gui) 
@@ -281,15 +281,13 @@ class Screen():
         fons = pygame.image.load('buttonbg.png').convert()
         fons = pygame.transform.scale(fons, (self.width, UI_HEIGHT))
         self.screen.blit(fons,(0,0))
-        pygame.display.update()
 
-    def draw_screen(self, surface):
-        # we receive a standard zx screen 
-        # and we scale it and draw it in the main screen
+    def draw_screen(self, surface): 
+        # only if the border has changed, draw it
         if self.get_hwbcolor() != colorTable[0][self.bcolor]:
             self.draw_border(self.bcolor)
+        # draw the standard zx screen onto the scaled one 
         self.screen.blit(pygame.transform.scale(surface, self.indimensions), (self.smargin,self.smargin+UI_HEIGHT)) 
-        pygame.display.update()
 
     def draw_border(self, color):
             self.screen.fill(colorTable[0][color],rect=(0,UI_HEIGHT,self.width,self.height))
@@ -590,11 +588,6 @@ def renderline(y, adr_pattern):
         adr_attributs = adr_attributs + 1
 
 def renderscreenFull():
-    """global border, nborder
-    if (border != nborder):
-        border = nborder
-        main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
-"""
     dir = 16384
     for y in range(192):
         # 000 tt zzz yyy xxxxx
@@ -603,12 +596,6 @@ def renderscreenFull():
 
 
 def renderscreenDiff():
-    """global border, nborder
-    if (border != nborder):
-        border = nborder
-        main_screen.fill(colorTable[0][border],rect=(0,UI_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT))
-"""
-
     for p in range(0, 768):
         if tilechanged[p] == True:
             ink, paper = decodecolor(mem[22528 + p])
@@ -631,7 +618,7 @@ def renderscreenDiff():
 def init_gui():
     # Set up the UI manager and elements
     global gui_manager
-    gui_manager = pygame_gui.UIManager((main_screen.get_width(), main_screen.get_height()))
+    gui_manager = pygame_gui.UIManager(main_screen.dimensions)
     buttonWidth = 90
     buttonHeight = 20
     numButtons = 3
@@ -661,7 +648,6 @@ UI_HEIGHT = 20
 ROM = "jocs/spectrum.rom"
 
 contaudio = 0
-
 bufferlen = 32
 bits = -16
 
@@ -679,7 +665,7 @@ mach = Z80()
 main_screen = Screen()
 init_gui()
 
-# Set up the ZX Spectrum screen surfaces (unscaled and scaled)
+# Set up the ZX Spectrum screen surface
 zx_screen = pygame.Surface(ZX_RES) 
 
 clock.tick(50)
@@ -717,26 +703,22 @@ while is_running:
             quit_app()
 
         elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_load_game:
-            is_running = False
             file_requester = pygame_gui.windows.UIFileDialog(
-                pygame.Rect(main_screen.smargin,main_screen.smargin+UI_HEIGHT,main_screen.inwidth,main_screen.inheight),
+                pygame.Rect(main_screen.smargin, main_screen.smargin+UI_HEIGHT, main_screen.inwidth, main_screen.inheight),
                 gui_manager,
                 window_title='Open file...',
                 initial_file_path='./jocs/',
-                allow_picking_directories=True,
+                allow_picking_directories=False,
                 allow_existing_files_only=True,
                 visible=1,
                 allowed_suffixes={""}
             )
-            gui_manager.draw_ui(main_screen.screen)
-            is_running = True
+            gui_manager.draw_ui(main_screen.screen) #type: ignore
             
         elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_scale_game:
-            is_running = False
             main_screen.scale_up()
             main_screen.draw_screen(zx_screen)
             init_gui()
-            is_running = True
 
         elif event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
             readSpectrumFile(create_resource_path(event.text))
@@ -748,6 +730,6 @@ while is_running:
     gui_manager.update(time_delta)
     gui_manager.draw_ui(main_screen.screen) # type: ignore
 
-
+    pygame.display.update()
 
 quit_app()
