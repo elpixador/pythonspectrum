@@ -25,4 +25,21 @@ class IOMap(object):
         
     def interupt(self):
         pass
-   
+
+    def read(self, portfull):
+        port = portfull & 0xFF
+        if port in self.address:
+            return self.address[port].read(portfull)
+        else:
+            return 0x00
+
+    def write(self, portfull, value):
+        port = portfull & 0xFF
+        if port in self.address:
+            self.address[port].write(portfull, value)
+
+    def keypress(self, scancode):
+        self.address[0xFE].keypress(scancode)
+
+    def keyrelease(self, scancode):
+        self.address[0xFE].keyrelease(scancode)

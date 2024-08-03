@@ -34,34 +34,87 @@ colorTable = (  # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour
 )
 flashReversed = False
 tilechanged = [True] * 768
-keysSpectrum = { # http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/keyboard
-   0x7F: 0b10111111, 0xBF: 0b10111111, 0xDF: 0b10111111, 0xEF: 0b10111111,
-   0xF7: 0b10111111, 0xFB: 0b10111111, 0xFD: 0b10111111, 0xFE: 0b10111111
-}
-
-pygameKeys = { # scancode
-   30: [0xF7, 0x01], 31: [0xF7, 0x02], 32: [0xF7, 0x04], 33: [0xF7, 0x08], 34: [0xF7, 0x10], # 12345
-   35: [0xEF, 0x10], 36: [0xEF, 0x08], 37: [0xEF, 0x04], 38: [0xEF, 0x02], 39: [0xEF, 0x01], # 67890
-   20: [0xFB, 0x01], 26: [0xFB, 0x02], 8: [0xFB, 0x04], 21: [0xFB, 0x08], 23: [0xFB, 0x10], # qwert
-   28: [0xDF, 0x10], 24: [0xDF, 0x08], 12: [0xDF, 0x04], 18: [0xDF, 0x02], 19: [0xDF, 0x01], # yuiop
-   4: [0xFD, 0x01], 22: [0xFD, 0x02], 7: [0xFD, 0x04], 9: [0xFD, 0x08], 10: [0xFD, 0x10], # asdfg
-   11: [0xBF, 0x10], 13: [0xBF, 0x08], 14: [0xBF, 0x04], 15: [0xBF, 0x02], # hjkl
-   29: [0xFE, 0x02], 27: [0xFE, 0x04], 6: [0xFE, 0x08], 25: [0xFE, 0x10], # zxcv
-   5: [0x7F, 0x10], 17: [0x7F, 0x08], 16: [0x7F, 0x04],  # bnm
-   40: [0xBF, 0x01], # Enter
-   44: [0x7F, 0x01], # Space
-   226: [0x7F, 0x02], # Sym (Alt)
-   225: [0xFE, 0x01], 229: [0xFE, 0x01], # Shift (LShift, RShift)
-   80: [0xEF, 0x10], 79: [0xEF, 0x08], 81: [0xEF, 0x04], 82: [0xEF, 0x02], 228: [0xEF, 0x01] # Sinclair Interface II (Cursors, RCtrl)
-}
 
 # classes
+class portFE(io.IO):
+    _addresses = [0xFE]
+
+    _keysSpectrum = { # http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/keyboard
+        0x7F: 0b10111111, 0xBF: 0b10111111, 0xDF: 0b10111111, 0xEF: 0b10111111,
+        0xF7: 0b10111111, 0xFB: 0b10111111, 0xFD: 0b10111111, 0xFE: 0b10111111
+    }
+
+    _pygameKeys = { # scancode
+        30: [0xF7, 0x01], 31: [0xF7, 0x02], 32: [0xF7, 0x04], 33: [0xF7, 0x08], 34: [0xF7, 0x10], # 12345
+        35: [0xEF, 0x10], 36: [0xEF, 0x08], 37: [0xEF, 0x04], 38: [0xEF, 0x02], 39: [0xEF, 0x01], # 67890
+        20: [0xFB, 0x01], 26: [0xFB, 0x02], 8: [0xFB, 0x04], 21: [0xFB, 0x08], 23: [0xFB, 0x10], # qwert
+        28: [0xDF, 0x10], 24: [0xDF, 0x08], 12: [0xDF, 0x04], 18: [0xDF, 0x02], 19: [0xDF, 0x01], # yuiop
+        4: [0xFD, 0x01], 22: [0xFD, 0x02], 7: [0xFD, 0x04], 9: [0xFD, 0x08], 10: [0xFD, 0x10], # asdfg
+        11: [0xBF, 0x10], 13: [0xBF, 0x08], 14: [0xBF, 0x04], 15: [0xBF, 0x02], # hjkl
+        29: [0xFE, 0x02], 27: [0xFE, 0x04], 6: [0xFE, 0x08], 25: [0xFE, 0x10], # zxcv
+        5: [0x7F, 0x10], 17: [0x7F, 0x08], 16: [0x7F, 0x04],  # bnm
+        40: [0xBF, 0x01], # Enter
+        44: [0x7F, 0x01], # Space
+        226: [0x7F, 0x02], # Sym (Alt)
+        225: [0xFE, 0x01], 229: [0xFE, 0x01], # Shift (LShift, RShift)
+        80: [0xEF, 0x10], 79: [0xEF, 0x08], 81: [0xEF, 0x04], 82: [0xEF, 0x02], 228: [0xEF, 0x01] # Sinclair Interface II (Cursors, RCtrl)
+    }
+
+    def keypress(self, scancode):
+        if scancode in self._pygameKeys:
+            k = self._pygameKeys[scancode]
+            self._keysSpectrum[k[0]] = self._keysSpectrum[k[0]] & (k[1]^0xFF)
+
+    def keyrelease(self, scancode):
+        if scancode in self._pygameKeys:
+            k = self._pygameKeys[scancode]
+            self._keysSpectrum[k[0]] = self._keysSpectrum[k[0]] | k[1]
+
+    def read(self, address):
+        adr = (address & 0xFFFF) >> 8
+        res = 0xBF
+        b = 0x80
+        while (b != 0):
+            if ((adr & b) == 0): res &= self._keysSpectrum[b ^ 0xFF]
+            b >>= 1
+        return res
+
+    def write(self, address, value):
+        #Bit   7   6   5   4   3   2   1   0
+        #  +-------------------------------+
+        #  |   |   |   | E | M |   Border  |
+        #  +-------------------------------+
+
+        # print((i[1] & 0b00010000) >> 4) #filtrem el bit de audio output per generar el so
+        #cal cridar la funció que toca per el so
+
+        #audioword = 0x0000
+        if((value & 0b00010000) >> 4):
+            audioword = 256
+        else:
+            audioword = 0
+
+
+        if (contaudio & bufferlen):
+            sound = pygame.sndarray.make_sound(bufaudio)
+            sound.play()
+            contaudio=0
+            bufaudio = numpy.zeros((bufferlen, 2), dtype = numpy.int16)
+        else:
+            bufaudio[contaudio][0] = audioword # left
+            bufaudio[contaudio][1] = audioword  # right
+            contaudio = contaudio + 1
+
+        #gestio del color del borde
+        nborder = (value & 0b00000111) 
+
 class Z80(io.Interruptable):
     def __init__(self):
         self.registers = registers.Registers()
         self.instructions = instructions.InstructionSet(self.registers)
         self._memory = mem
         self._iomap = io.IOMap()
+        self._iomap.addDevice(portFE())
         self._interrupted = False
 
     def interrupt(self):
@@ -102,59 +155,14 @@ class Z80(io.Interruptable):
                 if i < 0x10000:
                     data[n] = self._memory[i]
                 else:
-                    port = i & 0xFF
-                    if port == 0xFE: # keyboard
-                        adr = (i & 0xFFFF) >> 8
-                        res = 0xBF
-                        b = 0x80
-                        while (b != 0):
-                            if ((adr & b) == 0): res &= keysSpectrum[b ^ 0xFF]
-                            b >>= 1
-                        data[n] = res
-                    else:
-                        data[n] = 0x00
+                    data[n] = self._iomap.read(i & 0xFFFF)
 
             wrt = ins.execute(data, args)
-
-            audioword = 0
 
             for i in wrt:
                 adr = i[0]
                 if adr >= 0x10000:
-                    address = adr & 0xFF
-
-                    if (address == 0xFE): # es el port 254
-                        #Bit   7   6   5   4   3   2   1   0
-                        #  +-------------------------------+
-                        #  |   |   |   | E | M |   Border  |
-                        #  +-------------------------------+
-
-                        # print((i[1] & 0b00010000) >> 4) #filtrem el bit de audio output per generar el so
-                        #cal cridar la funció que toca per el so
-
-                        #audioword = 0x0000
-                        if((i[1] & 0b00010000) >> 4):
-                            audioword = 256
-                        else:
-                            audioword = 0
-
-
-                        if (contaudio & bufferlen):
-                            sound = pygame.sndarray.make_sound(bufaudio)
-                            sound.play()
-                            contaudio=0
-                            bufaudio = numpy.zeros((bufferlen, 2), dtype = numpy.int16)
-                        else:
-                            bufaudio[contaudio][0] = audioword # left
-                            bufaudio[contaudio][1] = audioword  # right
-                            contaudio = contaudio + 1
-
-                    #gestio del color del borde
-                        nborder = (i[1] & 0b00000111) 
-                    
-                    #iomap.address[address].write.emit(address, i[1])
-                    #self._iomap.address[address].write(address, i[1])
-                    #print (chr(i[1]))
+                    self._iomap.write(adr & 0xFFFF, i[1])
                 else:
                     if (adr > 16383): # Només escrivim a la RAM
                         # Caché per a renderscreenDiff
@@ -578,14 +586,10 @@ while is_running:
     time_delta = clock.tick(60)/1000.0
     for event in pygame.event.get():
         if event.type == pygame.KEYDOWN:
-            if event.scancode in pygameKeys:
-                k = pygameKeys[event.scancode]
-                keysSpectrum[k[0]] = keysSpectrum[k[0]] & (k[1]^0xFF)
+            mach._iomap.keypress(event.scancode)
       
         elif event.type == pygame.KEYUP:
-            if event.scancode in pygameKeys:
-                k = pygameKeys[event.scancode]
-                keysSpectrum[k[0]] = keysSpectrum[k[0]] | k[1]
+            mach._iomap.keyrelease(event.scancode)
 
         elif event.type == pygame.QUIT or (event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element ==b_quit_game):
             worker.stop()
