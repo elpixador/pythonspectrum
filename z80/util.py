@@ -9,6 +9,7 @@ conditions = [(0 << 3, 'NZ', 'Z', 0),
               (5 << 3, 'PE', 'PV', 1),
               (6 << 3, 'P', 'S', 0),
               (7 << 3, 'M', 'S', 1),]
+parities = [False]*256
 
 def get_16bit_twos_comp(val):
     """ Return the value of an 8bit 2s comp number"""
@@ -88,7 +89,7 @@ def a_and_n(registers, n):
     registers.A = a
     registers.condition.H = 1
     registers.condition.N = 0
-    registers.condition.PV = parity(a)
+    registers.condition.PV = parities[a]
     registers.condition.C = 0
     registers.condition.Z = (a == 0)
     registers.condition.S = a & 0x80
@@ -100,7 +101,7 @@ def a_or_n(registers, n):
     registers.A = a
     registers.condition.H = 0
     registers.condition.N = 0
-    registers.condition.PV = parity(a)
+    registers.condition.PV = parities[a]
     registers.condition.C = 0
     registers.condition.Z = (a == 0)
     registers.condition.S = a & 0x80
@@ -111,7 +112,7 @@ def a_xor_n(registers, n):
     registers.A = a
     registers.condition.H = 0
     registers.condition.N = 0
-    registers.condition.PV = parity(a)
+    registers.condition.PV = parities[a]
     registers.condition.C = 0
     registers.condition.Z = (a == 0)
     registers.condition.S = a & 0x80
@@ -124,7 +125,7 @@ def rotate_left_carry(registers, n):
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
-    registers.condition.PV = parity(v)
+    registers.condition.PV = parities[v]
     registers.condition.C = c
     return v
 
@@ -136,7 +137,7 @@ def rotate_left(registers, n):
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
-    registers.condition.PV = parity(v)
+    registers.condition.PV = parities[v]
     registers.condition.C = c
     return v
 
@@ -150,7 +151,7 @@ def rotate_right_carry(registers, n):
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
-    registers.condition.PV = parity(v)
+    registers.condition.PV = parities[v]
     registers.condition.C = c
     return v
 
@@ -162,7 +163,7 @@ def rotate_right(registers, n):
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
-    registers.condition.PV = parity(v)
+    registers.condition.PV = parities[v]
     registers.condition.C = c
     return v
 
@@ -174,7 +175,7 @@ def shift_left(registers, n):
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
-    registers.condition.PV = parity(v)
+    registers.condition.PV = parities[v]
     registers.condition.C = c
     return v
 
@@ -186,7 +187,7 @@ def shift_left_logical(registers, n):
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
-    registers.condition.PV = parity(v)
+    registers.condition.PV = parities[v]
     registers.condition.C = c
     return v
 
@@ -198,7 +199,7 @@ def shift_right(registers, n):
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
-    registers.condition.PV = parity(v)
+    registers.condition.PV = parities[v]
     registers.condition.C = c
     return v
 
@@ -210,7 +211,7 @@ def shift_right_logical(registers, n):
     registers.condition.Z = (v == 0)
     registers.condition.H = 0
     registers.condition.N = 0
-    registers.condition.PV = parity(v)
+    registers.condition.PV = parities[v]
     registers.condition.C = c
     return v
 

@@ -106,7 +106,7 @@ class InstructionSet():
                     else:
                         d[opargs[0][-1]] = ff
                     
-                            
+        for n in range(256): parities[n] = parity(n)
 
         self._instructions = self._instructions2
 
@@ -959,7 +959,7 @@ class InstructionSet():
         registers.A = a
         registers.condition.S = registers.A >> 7
         registers.condition.Z = (registers.A == 0)
-        registers.condition.PV = parity(registers.A)
+        registers.condition.PV = parities[registers.A]
         set_f5_f3_from_a(registers)
         return []
         """            
@@ -1436,7 +1436,7 @@ class InstructionSet():
         registers.condition.Z = a == 0
         registers.condition.H = 0
         registers.condition.N = 0
-        registers.condition.PV = parity(a)
+        registers.condition.PV = parities[a]
         set_f5_f3(registers, registers.A)
         return [(registers.HL, hl)]
 
@@ -1451,7 +1451,7 @@ class InstructionSet():
         registers.condition.Z = a == 0
         registers.condition.H = 0
         registers.condition.N = 0
-        registers.condition.PV = parity(a)
+        registers.condition.PV = parities[a]
         set_f5_f3(registers, registers.A)
         return [(registers.HL, hl)]
 
@@ -1737,7 +1737,7 @@ class InstructionSet():
         registers.condition.S = res & 0x80
         registers.condition.Z = res == 0
         registers.condition.H = 0
-        registers.condition.PV = parity(res)
+        registers.condition.PV = parities[res]
         registers.condition.N = 0
         if r == "F":
             return []
