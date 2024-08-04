@@ -202,6 +202,7 @@ class Worker:
 class Screen():
     DEFAULT_SCALE = 3
     MAXSCALE = 5
+    UI_HEIGHT = 30
 
     def __init__(self):
         self.scale = self.DEFAULT_SCALE
@@ -213,15 +214,16 @@ class Screen():
         self.dimensions = self.width, self.height = self.update_dimensions()
         # dimensions of internal surface for scaled zx screen 
         self.indimensions = self.inwidth, self.inheight = self.update_indimensions()
- 
+
         # border color
         self.bcolor = 7 # white, default screen
         # window name
         self.caption = "Pythonspectrum"
         # app icon
         self.icon = "./window.png"
-        # placeholders for screen and gui_manager
+        # placeholders for screen and ui_manager
         self.screen = None
+        self.ui_manager = None
 
         pygame.init()
         # basic initializations
@@ -229,24 +231,45 @@ class Screen():
         pygame.display.set_icon(pygame.image.load(self.icon))
 
         self._init_screen()
+        self.init_gui()
 
     def _init_screen(self):
         # init main screen to fit it all (spectrum, border & gui) 
         self.screen = pygame.display.set_mode(self.dimensions, vsync=0)
         # pintem un fons maco on posarem els botonets
         fons = pygame.image.load('buttonbg.png').convert()
-        fons = pygame.transform.scale(fons, (self.width, UI_HEIGHT))
+        fons = pygame.transform.scale(fons, (self.width, self.UI_HEIGHT))
         self.screen.blit(fons,(0,0))
+    
+    def init_gui(self):
+        self.ui_manager = pygame_gui.UIManager(self.dimensions)
+        buttonWidth = 90
+        buttonHeight = self.UI_HEIGHT-4
+        numButtons = 3
+        gap = 3
+        startingPoint = (self.width - ((buttonWidth * numButtons) + (gap * (numButtons - 1)))) / 2
+        self.b_load_game = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((startingPoint, 1), (buttonWidth, buttonHeight)), 
+            text='Load Game', 
+            manager=self.ui_manager)
+        self.b_scale_game = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((startingPoint+buttonWidth+gap, 1), (buttonWidth, buttonHeight)), 
+            text='Scale: ' + str(self.scale), 
+            manager=self.ui_manager)
+        self.b_quit_game = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((startingPoint+((buttonWidth+gap)*2), 1), (buttonWidth, buttonHeight)), 
+            text='Quit Game', 
+            manager=self.ui_manager)
 
     def draw_screen(self, surface): 
         # only if the border has changed, draw it
         if self.get_hwbcolor() != colorTable[0][self.bcolor]:
             self.draw_border(self.bcolor)
         # draw the standard zx screen onto the scaled one 
-        self.screen.blit(pygame.transform.scale(surface, self.indimensions), (self.smargin,self.smargin+UI_HEIGHT)) 
+        self.screen.blit(pygame.transform.scale(surface, self.indimensions), (self.smargin, self.smargin + self.UI_HEIGHT)) 
 
     def draw_border(self, color):
-            self.screen.fill(colorTable[0][color],rect=(0,UI_HEIGHT,self.width,self.height))
+            self.screen.fill(colorTable[0][color],rect=(0,self.UI_HEIGHT,self.width,self.height))
 
     def get_scale(self):
         return self.scale
@@ -264,7 +287,7 @@ class Screen():
         self._init_screen()
 
     def get_hwbcolor(self): # border color currently displayed
-        hwbcolor = '#{:02X}{:02X}{:02X}'.format(*self.screen.get_at((0,UI_HEIGHT))[:3])
+        hwbcolor = '#{:02X}{:02X}{:02X}'.format(*self.screen.get_at((0,self.UI_HEIGHT))[:3])
         return hwbcolor
     
     def get_bcolor(self) -> int:
@@ -282,7 +305,7 @@ class Screen():
         return self.get_inwidth() + (self.get_smargin() * 2)
     
     def get_height(self) -> int:
-        return self.get_inheight() + (self.get_smargin() * 2) + UI_HEIGHT
+        return self.get_inheight() + (self.get_smargin() * 2) + self.UI_HEIGHT
 
     def update_indimensions(self):
         self.inwidth = self.get_inwidth()
@@ -572,36 +595,12 @@ def renderscreenDiff():
                 y += 1
             tilechanged[p] = False
 
-def init_gui():
-    # Set up the UI manager and elements
-    global gui_manager
-    gui_manager = pygame_gui.UIManager(main_screen.dimensions)
-    buttonWidth = 90
-    buttonHeight = 20
-    numButtons = 3
-    gap = 2
-    startingPoint = (main_screen.get_width() - ((buttonWidth * numButtons) + (gap * (numButtons - 1)))) / 2
-    global b_load_game, b_scale_game, b_quit_game
-    b_load_game = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((startingPoint, 1), (buttonWidth, buttonHeight)), 
-        text='Load Game', 
-        manager=gui_manager)
-    b_scale_game = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((startingPoint+buttonWidth+gap, 1), (buttonWidth, buttonHeight)), 
-        text='Scale: ' + str(main_screen.get_scale()), 
-        manager=gui_manager)
-    b_quit_game = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((startingPoint+((buttonWidth+gap)*2), 1), (buttonWidth, buttonHeight)), 
-        text='Quit Game', 
-        manager=gui_manager)
-
-    gui_manager.draw_ui(main_screen.screen) #type: ignore
 
 # INICI
 print("Platform is: ", platform.system())
 
 ZX_RES = ZXWIDTH, ZXHEIGHT = 256, 192
-UI_HEIGHT = 20
+UI_HEIGHT = 30
 ROM = "jocs/spectrum.rom"
 
 contaudio = 0
@@ -620,7 +619,6 @@ mach = Z80()
 
 # Initialize graphics and GUI
 main_screen = Screen()
-init_gui()
 
 # Set up the ZX Spectrum screen surface
 zx_screen = pygame.Surface(ZX_RES) 
@@ -647,45 +645,49 @@ while is_running:
             if (io.ZXmem[22528 + p] & 0b10000000) != 0:
                 tilechanged[p] = True
 
-    time_delta = clock.tick(60)/1000.0
     for event in pygame.event.get():
-        if event.type == pygame.KEYDOWN:
-            mach._iomap.keypress(event.scancode)
-      
-        elif event.type == pygame.KEYUP:
-            mach._iomap.keyrelease(event.scancode)
+        match event.type:
+            case pygame.KEYDOWN:
+                mach._iomap.keypress(event.scancode)
 
-        elif event.type == pygame.QUIT or (event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_quit_game):
-            worker.stop()
-            quit_app()
+            case pygame.KEYUP:
+                mach._iomap.keyrelease(event.scancode)
 
-        elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_load_game:
-            file_requester = pygame_gui.windows.UIFileDialog(
-                pygame.Rect(main_screen.smargin, main_screen.smargin+UI_HEIGHT, main_screen.inwidth, main_screen.inheight),
-                gui_manager,
-                window_title='Open file...',
-                initial_file_path='./jocs/',
-                allow_picking_directories=False,
-                allow_existing_files_only=True,
-                visible=1,
-                allowed_suffixes={""}
-            )
-            gui_manager.draw_ui(main_screen.screen) #type: ignore
-            
-        elif event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == b_scale_game:
-            main_screen.scale_up()
-            main_screen.draw_screen(zx_screen)
-            init_gui()
+            case pygame.QUIT:
+                worker.stop()
+                quit_app()
 
-        elif event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
-            readSpectrumFile(create_resource_path(event.text))
+            case pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
+                readSpectrumFile(create_resource_path(event.text))
+
+            case pygame_gui.UI_BUTTON_PRESSED:
+                match event.ui_element:
+                    case main_screen.b_quit_game:
+                        # we trigger an exit event
+                        pygame.event.post(pygame.event.Event(pygame.QUIT))
+                    
+                    case main_screen.b_scale_game:
+                        main_screen.scale_up()
+                        main_screen.init_gui()
+
+                    case main_screen.b_load_game:
+                        file_requester = pygame_gui.windows.UIFileDialog(
+                            pygame.Rect(main_screen.smargin, main_screen.smargin + main_screen.UI_HEIGHT, main_screen.inwidth, main_screen.inheight),
+                            main_screen.ui_manager,
+                            window_title='Open file...',
+                            initial_file_path='./jocs/',
+                            allow_picking_directories=False,
+                            allow_existing_files_only=True,
+                            visible=1,
+                            allowed_suffixes={""})
  
-        gui_manager.process_events(event)
+        main_screen.ui_manager.process_events(event)
 
     renderscreenDiff()
     main_screen.draw_screen(zx_screen)
-    gui_manager.update(time_delta)
-    gui_manager.draw_ui(main_screen.screen) # type: ignore
+    time_delta = clock.tick(60)/1000.0
+    main_screen.ui_manager.update(time_delta)
+    main_screen.ui_manager.draw_ui(main_screen.screen) # type: ignore
 
     pygame.display.update()
 
