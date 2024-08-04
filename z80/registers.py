@@ -8,7 +8,7 @@ class BitAccesser(object):
         object.__setattr__(self, "reg", reg) #self.reg = reg
         
     def __getattr__(self, b):
-        return (self.registers[self.reg] >>  self.bitspos[b]) &  1
+        return (dict(self.registers)[self.reg] >>  self.bitspos[b]) &  1
     
     def __setattr__(self, b, v):
         if v:
@@ -58,36 +58,45 @@ class Registers(dict):
         self['IM']=False   # Iterrupt mode
 
     def __setattr__(self, attr, val):
-        if attr  in ["HL", "AF", "BC", "DE"]:
-            self[attr[0]] = val >> 8
-            self[attr[1]] = val &  0xFF
+        if attr in self:
+            super(Registers, self).__setitem__(attr, val)
+        elif attr  in ["HL", "AF", "BC", "DE"]:
+            super(Registers, self).__setitem__(attr[0], val >> 8)
+            super(Registers, self).__setitem__(attr[1], val & 0xFF)
         elif attr in ["IXH", "IYH"]:
-            self[attr[0:2]] = (self[attr[0:2]] & 0x00FF) | (val << 8)
+            i = attr[0:2]
+            super(Registers, self).__setitem__(i, (super(Registers, self).__getitem__(i) & 0x00FF) | (val << 8))
         elif attr in ["IXL", "IYL"]:
-            self[attr[0:2]] = (self[attr[0:2]] & 0xFF00) | val
-        else:
-            self[attr] = val
+            i = attr[0:2]
+            super(Registers, self).__setitem__(i, (super(Registers, self).__getitem__(i) & 0xFF00) | val)
 
     def __getattr__(self, reg):
         if reg in self:
-            return self[reg]
+            return super(Registers, self).__getitem__(reg)
         elif reg in ["HL", "AF", "BC", "DE"]:
-            return self[reg[0]] << 8 |  self[reg[1]]
+            return super(Registers, self).__getitem__(reg[0]) << 8 | super(Registers, self).__getitem__(reg[1])
         elif reg in ["IXH", "IYH"]:
-            return self[reg[0:2]] >> 8
+            return super(Registers, self).__getitem__(reg[0:2]) >> 8
         elif reg in ["IXL", "IYL"]:
-            return self[reg[0:2]] & 0xFF
-        else:
-            raise AttributeError("%s Not a known register."%reg)
+            return super(Registers, self).__getitem__(reg[0:2]) & 0xFF
         
     def __getitem__(self, reg):
-        if reg in ["BC", "HL", "DE", "AF", "IXH", "IXL", "IYH", "IYL"]:
-            return getattr(self, reg)
+        if reg in self:
+            return super(Registers, self).__getitem__(reg)
+        elif reg in ["BC", "HL", "DE", "AF"]:
+            return super(Registers, self).__getitem__(reg[0]) << 8 |  super(Registers, self).__getitem__(reg[1])
+        elif reg in ["IXH", "IXL", "IYH", "IYL"]:
+            return getattr(self, reg)        
         else:
             return super(Registers, self).__getitem__(reg)
         
     def __setitem__(self, reg, val):
-        if reg in ["BC", "HL", "DE", "AF", "IXH", "IXL", "IYH", "IYL"]:
+        if reg in self:
+            return super(Registers, self).__setitem__(reg, val)
+        elif reg in ["BC", "HL", "DE", "AF"]:
+            super(Registers, self).__setitem__(reg[0], val >> 8)
+            super(Registers, self).__setitem__(reg[1], val & 0xFF)
+        elif reg in ["IXH", "IXL", "IYH", "IYL"]:
             return setattr(self, reg, val)
         else:
             return super(Registers, self).__setitem__(reg, val)
