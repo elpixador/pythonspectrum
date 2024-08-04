@@ -71,10 +71,10 @@ class portFE(io.IO):
             self._keysSpectrum[k[0]] = self._keysSpectrum[k[0]] | k[1]
 
     def read(self, address):
-        adr = (address & 0xFFFF) >> 8
+        adr = address >> 8
         res = 0xBF
         b = 0x80
-        while (b != 0):
+        while b:
             if ((adr & b) == 0): res &= self._keysSpectrum[b ^ 0xFF]
             b >>= 1
         return res
@@ -555,12 +555,13 @@ def renderline(y, adr_pattern):
     x = 0
     for col in range(32):
         ink, paper = decodecolor(io.ZXmem[adr_attributs])
+        m = io.ZXmem[adr_pattern]
         b = 0b10000000
-        while b > 0:
-            if (io.ZXmem[adr_pattern] & b) == 0:
-                zx_screen.set_at((x, y), paper)
-            else:
+        while b:
+            if (m & b):
                 zx_screen.set_at((x, y), ink)
+            else:
+                zx_screen.set_at((x, y), paper)
             x = x + 1
             b = b >> 1
         adr_pattern = adr_pattern + 1
@@ -585,11 +586,11 @@ def renderscreenDiff():
                 m = io.ZXmem[adr_pattern + offset]
                 x = (p & 0b00011111) * 8
                 b = 0b10000000
-                while b > 0:
-                    if (m & b) == 0:
-                        zx_screen.set_at((x, y), paper)
-                    else:
+                while b:
+                    if (m & b):
                         zx_screen.set_at((x, y), ink)
+                    else:
+                        zx_screen.set_at((x, y), paper)
                     b >>= 1
                     x += 1
                 y += 1
@@ -642,7 +643,7 @@ while is_running:
     if (conta & 0b00011111) == 0:
         flashReversed = not flashReversed
         for p in range(0, 768):
-            if (io.ZXmem[22528 + p] & 0b10000000) != 0:
+            if (io.ZXmem[22528 + p] & 0b10000000):
                 tilechanged[p] = True
 
     for event in pygame.event.get():
