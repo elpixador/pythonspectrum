@@ -225,6 +225,7 @@ class Screen():
         self.screen = None
         self.ui_manager = None
 
+
         pygame.init()
         # basic initializations
         pygame.display.set_caption(self.caption)
@@ -245,21 +246,21 @@ class Screen():
         self.ui_manager = pygame_gui.UIManager(self.dimensions)
         buttonWidth = 90
         buttonHeight = self.UI_HEIGHT-4
-        numButtons = 3
         gap = 3
+        button_info = [
+            ("Load Game", "b_load_game"),
+            ("Scale: " + str(self.scale), "b_scale_game"),
+            ("Quit Game", "b_quit_game")
+        ]
+        numButtons = len(button_info)
         startingPoint = (self.width - ((buttonWidth * numButtons) + (gap * (numButtons - 1)))) / 2
-        self.b_load_game = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((startingPoint, 1), (buttonWidth, buttonHeight)), 
-            text='Load Game', 
-            manager=self.ui_manager)
-        self.b_scale_game = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((startingPoint+buttonWidth+gap, 1), (buttonWidth, buttonHeight)), 
-            text='Scale: ' + str(self.scale), 
-            manager=self.ui_manager)
-        self.b_quit_game = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((startingPoint+((buttonWidth+gap)*2), 1), (buttonWidth, buttonHeight)), 
-            text='Quit Game', 
-            manager=self.ui_manager)
+
+        for i, (text, attr) in enumerate(button_info):
+            setattr(self, attr, pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect((startingPoint + i * (buttonWidth + gap), 2), (buttonWidth, buttonHeight)),
+                text=text,
+                manager=self.ui_manager
+            ))
 
     def draw_screen(self, surface): 
         # only if the border has changed, draw it
