@@ -620,12 +620,12 @@ ROM = "jocs/spectrum.rom"
 
 
 #initialize audio
-bufferlen = 1024
+bufferlen = 960
 buffaudio = numpy.zeros((bufferlen, 1), dtype = numpy.int16)
 audiocount = 0
 
 
-stream = sd.RawOutputStream(10500, channels=1, dtype=numpy.int16)
+stream = sd.RawOutputStream(13500, channels=1, dtype=numpy.int16)
 stream.start()
 
 # Initialize Pygame and the clock
