@@ -236,6 +236,8 @@ class Screen():
         # placeholders for screen and ui_manager
         self.screen = None
         self.ui_manager = None
+        # dropdown menu options
+        self.ddm_options = None
 
 
         pygame.init()
@@ -256,10 +258,10 @@ class Screen():
     
     def init_gui(self):
         self.ui_manager = pygame_gui.UIManager(self.dimensions)
-        buttonWidth = 90
-        buttonHeight = self.UI_HEIGHT-4
+        buttonWidth = 110
+        buttonHeight = self.UI_HEIGHT-2
         gap = 3
-        ddm_options = ["Scale: " + str(self.scale),"Freeze","Screenshot","About","Quit"]
+        ddm_options = ["Options","Scale: " + str(self.scale),"Freeze","Screenshot","About","Quit"]
         button_info = [
             ("Load Game", "b_load_game", "UIButton"),
             (ddm_options[0], "b_dropdown", "UIDropdownMenu")
@@ -700,9 +702,15 @@ while is_running:
                             allowed_suffixes={""})
 
             case pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
-                if event.ui_element == main_screen.b_dropdown:
-                    print("I got here")
-                    
+                print(event.text)
+                match event.text.split()[0]: # matching first word only
+                    case "Scale:":
+                        main_screen.scale_up()
+                        main_screen.init_gui()
+                    case "Quit":
+                        # we trigger an exit event
+                        pygame.event.post(pygame.event.Event(pygame.QUIT))
+
 
         """                    case main_screen.b_quit_game:
                                 # we trigger an exit event
