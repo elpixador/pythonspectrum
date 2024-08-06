@@ -1,10 +1,12 @@
-from ast import main
 import sys, os, threading, platform
-import numpy
+
 import pygame
 # PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
 import pygame_gui
 from pygame_gui.core.utility import create_resource_path
+
+import numpy
+import sounddevice as sd
 
 ## Z80 CPU Emulator / https://github.com/cburbridge/z80
 from z80 import util, io, registers, instructions
@@ -89,24 +91,18 @@ class portFE(io.IO):
         #cal cridar la funció que toca per el so
 
         #audioword = 0x0000
-        global nborder,  contaudio, bufferlen, bufaudio, audioword
+        global nborder, audioword
 
-        if((value & 0b00010000) >> 4):
-            audioword = 256
-        else:
-            audioword = 0
-
-
-        if (contaudio & bufferlen):
-            sound = pygame.sndarray.make_sound(bufaudio)
-            sound.play()
-            contaudio=0
-            bufaudio = numpy.zeros((bufferlen, 2), dtype = numpy.int16)
-        else:
-            bufaudio[contaudio][0] = audioword # left
-            bufaudio[contaudio][1] = audioword  # right
-            contaudio = contaudio + 1
-
+        # new values out volume
+        if((value & 0b00011000) == 24):
+           audioword = 29569 
+        elif ((value & 0b00010000) == 16):
+           audioword = 28445
+        elif ((value & 0b00001000) == 8):
+           audioword = 3113
+        elif ((value & 0b00000000) == 0):
+           audioword = 0
+   
         #gestio del color del borde
         main_screen.set_bcolor(value & 0b00000111) 
 
@@ -172,11 +168,27 @@ class Worker:
         self.thread = None
 
     def loop(self):
+        global bufferlen, audiocount, buffaudio
         cicles = 0
+        contascans = 0
         while not self.stop_event.is_set():
-            cicles += 69888
+
+            cicles += 158
             cicles = mach.step_instruction(cicles)
-            mach.interrupt()
+
+
+            if (audiocount == bufferlen):
+                audiocount = 0
+            else:
+                buffaudio[audiocount] = audioword 
+                audiocount += 1
+
+            contascans += 1
+
+            if (contascans == 442):
+                contascans = 0
+                mach.interrupt()
+
     
     def start(self):
         if self.thread is not None and self.thread.is_alive():
@@ -247,20 +259,32 @@ class Screen():
         buttonWidth = 90
         buttonHeight = self.UI_HEIGHT-4
         gap = 3
+        ddm_options = ["Scale: " + str(self.scale),"Freeze","Screenshot","About","Quit"]
         button_info = [
-            ("Load Game", "b_load_game"),
-            ("Scale: " + str(self.scale), "b_scale_game"),
-            ("Quit Game", "b_quit_game")
+            ("Load Game", "b_load_game", "UIButton"),
+            (ddm_options[0], "b_dropdown", "UIDropdownMenu")
         ]
         numButtons = len(button_info)
         startingPoint = (self.width - ((buttonWidth * numButtons) + (gap * (numButtons - 1)))) / 2
 
-        for i, (text, attr) in enumerate(button_info):
-            setattr(self, attr, pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect((startingPoint + i * (buttonWidth + gap), 2), (buttonWidth, buttonHeight)),
-                text=text,
-                manager=self.ui_manager
-            ))
+        for i, (text, attr, button_type) in enumerate(button_info):
+            position = (startingPoint + i * (buttonWidth + gap), 2)
+            size = (buttonWidth, buttonHeight)
+
+            if button_type == "UIButton":
+                button = pygame_gui.elements.UIButton(
+                    relative_rect=pygame.Rect(position, size),
+                    text=text,
+                    manager=self.ui_manager
+                )
+            elif button_type == "UIDropdownMenu":
+                button = pygame_gui.elements.UIDropDownMenu(
+                    options_list=ddm_options,
+                    starting_option=ddm_options[0],
+                    relative_rect=pygame.Rect(position, size),
+                    manager=self.ui_manager
+                )
+            setattr(self, attr, button)
 
     def draw_screen(self, surface): 
         # only if the border has changed, draw it
@@ -602,16 +626,15 @@ def renderscreenDiff():
 print("Platform is: ", platform.system())
 
 ZX_RES = ZXWIDTH, ZXHEIGHT = 256, 192
-UI_HEIGHT = 30
 ROM = "jocs/spectrum.rom"
 
-contaudio = 0
-bufferlen = 32
-bits = -16
+#initialize audio
+bufferlen = 960
+buffaudio = numpy.zeros((bufferlen, 1), dtype = numpy.int16)
+audiocount = 0
 
-pygame.mixer.pre_init(44100, bits, 2, bufferlen)
-#pygame.mixer.music.set_volume(1)
-bufaudio = numpy.zeros((bufferlen, 2), dtype = numpy.int16)
+stream = sd.RawOutputStream(13500, channels=1, dtype=numpy.int16)
+stream.start()
 
 # Initialize Pygame and the clock
 clock = pygame.time.Clock()
@@ -657,6 +680,7 @@ while is_running:
 
             case pygame.QUIT:
                 worker.stop()
+                stream.stop()
                 quit_app()
 
             case pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
@@ -664,14 +688,6 @@ while is_running:
 
             case pygame_gui.UI_BUTTON_PRESSED:
                 match event.ui_element:
-                    case main_screen.b_quit_game:
-                        # we trigger an exit event
-                        pygame.event.post(pygame.event.Event(pygame.QUIT))
-                    
-                    case main_screen.b_scale_game:
-                        main_screen.scale_up()
-                        main_screen.init_gui()
-
                     case main_screen.b_load_game:
                         file_requester = pygame_gui.windows.UIFileDialog(
                             pygame.Rect(main_screen.smargin, main_screen.smargin + main_screen.UI_HEIGHT, main_screen.inwidth, main_screen.inheight),
@@ -682,7 +698,20 @@ while is_running:
                             allow_existing_files_only=True,
                             visible=1,
                             allowed_suffixes={""})
- 
+
+            case pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+                if event.ui_element == main_screen.b_dropdown:
+                    print("I got here")
+                    
+
+        """                    case main_screen.b_quit_game:
+                                # we trigger an exit event
+                                pygame.event.post(pygame.event.Event(pygame.QUIT))
+                            
+                            case main_screen.b_scale_game:
+                                main_screen.scale_up()
+                                main_screen.init_gui()"""
+
         main_screen.ui_manager.process_events(event)
 
     renderscreenDiff()
@@ -690,7 +719,7 @@ while is_running:
     time_delta = clock.tick(60)/1000.0
     main_screen.ui_manager.update(time_delta)
     main_screen.ui_manager.draw_ui(main_screen.screen) # type: ignore
-
+    stream.write(buffaudio)
     pygame.display.update()
 
 quit_app()
