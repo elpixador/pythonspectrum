@@ -261,7 +261,7 @@ class Screen():
         buttonWidth = 110
         buttonHeight = self.UI_HEIGHT-2
         gap = 3
-        ddm_options = ["Options","Scale: " + str(self.scale),"Freeze","Screenshot","About","Quit"]
+        ddm_options = ["Options","Scale: " + str(self.scale),"Freeze","Reset","Screenshot","About","Quit"]
         button_info = [
             ("Load Game", "b_load_game", "UIButton"),
             (ddm_options[0], "b_dropdown", "UIDropdownMenu")

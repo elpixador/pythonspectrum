@@ -31,5 +31,9 @@
         "border_width": "0",
         "open_button_width": "0"
       }
+  },
+  "drop_down_menu.#expand_button":
+  {
+    "open_button_width": "0"
   }
 }
