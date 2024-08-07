@@ -1,0 +1,31 @@
+{
+  "button":
+  {
+    "colours":
+    {
+      "normal_bg": "#25292e",
+      "hovered_bg": "#35393e"
+    }
+  },
+  "drop_down_menu":
+  {
+      "misc":
+      {
+          "expand_direction": "down",
+          "text_horiz_alignment": "right"
+      },
+
+      "colours":
+      {
+          "normal_bg": "#25292e",
+          "hovered_bg": "#ffff00"
+      }
+  },
+  "drop_down_menu.#selected_option":
+  {
+      "misc":
+      {
+        "border_width": 2
+      }
+  }
+}

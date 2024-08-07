@@ -257,7 +257,7 @@ class Screen():
         self.screen.blit(fons,(0,0))
     
     def init_gui(self):
-        self.ui_manager = pygame_gui.UIManager(self.dimensions)
+        self.ui_manager = pygame_gui.UIManager(self.dimensions,'./theme.json')
         buttonWidth = 110
         buttonHeight = self.UI_HEIGHT-2
         gap = 3
@@ -284,9 +284,10 @@ class Screen():
                     options_list=ddm_options,
                     starting_option=ddm_options[0],
                     relative_rect=pygame.Rect(position, size),
-                    manager=self.ui_manager
+                    manager=self.ui_manager,
                 )
             setattr(self, attr, button)
+
 
     def draw_screen(self, surface): 
         # only if the border has changed, draw it
@@ -710,15 +711,10 @@ while is_running:
                     case "Quit":
                         # we trigger an exit event
                         pygame.event.post(pygame.event.Event(pygame.QUIT))
-
-
-        """                    case main_screen.b_quit_game:
-                                # we trigger an exit event
-                                pygame.event.post(pygame.event.Event(pygame.QUIT))
-                            
-                            case main_screen.b_scale_game:
-                                main_screen.scale_up()
-                                main_screen.init_gui()"""
+                """# Reset to the first option
+                dropdown_menu.selected_option = dropdown_options[0]
+                dropdown_menu.selected_option_text = dropdown_options[0]
+                dropdown_menu.set_item_list(dropdown_options)  # Update the dropdown menu"""
 
         main_screen.ui_manager.process_events(event)
 
