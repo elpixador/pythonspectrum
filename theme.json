@@ -3,29 +3,33 @@
   {
     "colours":
     {
-      "normal_bg": "#25292e",
+      "normal_bg": "#727287",
       "hovered_bg": "#35393e"
-    }
+    },
+    "font":
+    {
+        "name": "Monocraft",
+        "size": "15",
+        "bold": "0",
+        "italic": "0",
+        "regular_path": "./Monocraft-no-ligatures.ttf"
+        }
   },
   "drop_down_menu":
   {
       "misc":
       {
           "expand_direction": "down",
-          "text_horiz_alignment": "right"
-      },
-
-      "colours":
-      {
-          "normal_bg": "#25292e",
-          "hovered_bg": "#ffff00"
+          "open_button_width": "0"
       }
+
   },
   "drop_down_menu.#selected_option":
   {
       "misc":
       {
-        "border_width": 2
+        "border_width": "0",
+        "open_button_width": "0"
       }
   }
 }
