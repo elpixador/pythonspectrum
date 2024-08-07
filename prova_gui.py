@@ -205,10 +205,13 @@ class Worker:
             self.thread.join()
         print("Worker stopped")
 
-    def restart(self):
-        self.stop()
-        self.start()
-        print("Worker restarted")
+    def toggle(self):
+        if self.thread is not None and self.thread.is_alive():
+            self.stop()
+            print("Worker stopped")
+        else:
+            self.start()
+            print("Worker started")
 
 class Screen():
     DEFAULT_SCALE = 3
@@ -651,7 +654,6 @@ main_screen = Screen()
 zx_screen = pygame.Surface(ZX_RES) 
 
 clock.tick(50)
-is_running = True
 
 readROM()
 renderscreenFull()
@@ -664,7 +666,7 @@ conta = 0
 audioword = 0
 
 # Main loop
-while is_running:
+while True:
     conta += 1
     if (conta & 0b00011111) == 0:
         flashReversed = not flashReversed
@@ -704,7 +706,7 @@ while is_running:
             case pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
                 print(event.text) # to be removed
                 match event.text.split()[0]: # matching first word only
-                    case "Scale:":
+                    case "Scale":
                         main_screen.scale_up()
                         main_screen.init_gui()
                     case "Quit":
@@ -719,6 +721,17 @@ while is_running:
                         screenshot = pygame.Surface(area)
                         screenshot.blit(main_screen.screen,(0,-main_screen.UI_HEIGHT))
                         pygame.image.save(screenshot,"screenshot.png")
+                    case "Freeze":
+                        worker.toggle()
+                    case "About":
+                        dialog_rect = pygame.Rect((250, 150), (300, 200))
+                        about_window = pygame_gui.elements.UIWindow(
+                            rect=dialog_rect,
+                            manager=main_screen.ui_manager,
+                            window_display_title="About",
+                            object_id="#about_dialog"
+                        )
+                
                 """# Reset to the first option
                 dropdown_menu.selected_option = dropdown_options[0]
                 dropdown_menu.selected_option_text = dropdown_options[0]
