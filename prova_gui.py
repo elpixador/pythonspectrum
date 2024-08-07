@@ -711,8 +711,9 @@ while is_running:
                         # we trigger an exit event
                         pygame.event.post(pygame.event.Event(pygame.QUIT))
                     case "Reset":
+                        worker.stop()
                         mach.registers.PC=0
-                        worker.restart()
+                        worker.start()
                     case "Screenshot":
                         area = main_screen.dimensions[0], main_screen.dimensions[1] - main_screen.UI_HEIGHT
                         screenshot = pygame.Surface(area)
