@@ -162,6 +162,7 @@ class Z80(io.Interruptable):
 
         return cicles
 
+
 class Worker:
     def __init__(self):
         self.stop_event = threading.Event()
@@ -176,7 +177,6 @@ class Worker:
             cicles += 158
             cicles = mach.step_instruction(cicles)
 
-
             if (audiocount == bufferlen):
                 audiocount = 0
             else:
@@ -188,7 +188,6 @@ class Worker:
             if (contascans == 442):
                 contascans = 0
                 mach.interrupt()
-
     
     def start(self):
         if self.thread is not None and self.thread.is_alive():
@@ -261,7 +260,7 @@ class Screen():
         buttonWidth = 110
         buttonHeight = self.UI_HEIGHT-2
         gap = 3
-        ddm_options = ["Options","Scale: " + str(self.scale),"Freeze","Reset","Screenshot","About","Quit"]
+        ddm_options = ["Options","Scale (" + str(self.scale)+")","Freeze","Reset","Screenshot","About","Quit"]
         button_info = [
             ("Load Game", "b_load_game", "UIButton"),
             (ddm_options[0], "b_dropdown", "UIDropdownMenu")
@@ -703,7 +702,7 @@ while is_running:
                             allowed_suffixes={""})
 
             case pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
-                print(event.text)
+                print(event.text) # to be removed
                 match event.text.split()[0]: # matching first word only
                     case "Scale:":
                         main_screen.scale_up()
@@ -711,6 +710,14 @@ while is_running:
                     case "Quit":
                         # we trigger an exit event
                         pygame.event.post(pygame.event.Event(pygame.QUIT))
+                    case "Reset":
+                        mach.registers.PC=0
+                        worker.restart()
+                    case "Screenshot":
+                        area = main_screen.dimensions[0], main_screen.dimensions[1] - main_screen.UI_HEIGHT
+                        screenshot = pygame.Surface(area)
+                        screenshot.blit(main_screen.screen,(0,-main_screen.UI_HEIGHT))
+                        pygame.image.save(screenshot,"screenshot.png")
                 """# Reset to the first option
                 dropdown_menu.selected_option = dropdown_options[0]
                 dropdown_menu.selected_option_text = dropdown_options[0]
