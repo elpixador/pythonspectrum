@@ -724,12 +724,25 @@ while True:
                     case "Freeze":
                         worker.toggle()
                     case "About":
-                        dialog_rect = pygame.Rect((250, 150), (300, 200))
+                        about_window = None
+                        about_text_block = None
+                        about_text = None
                         about_window = pygame_gui.elements.UIWindow(
-                            rect=dialog_rect,
+                            rect=pygame.Rect((10, 60), (320, 220)),
                             manager=main_screen.ui_manager,
-                            window_display_title="About",
+                            window_display_title="About Pythonspectrum",
                             object_id="#about_dialog"
+                        )
+                        about_text = [
+                            "<p style=\"align:center\">Pythonspectrum 1.0</p>",
+                            "Sergi Martinez (z80, project lead)",
+                            "Manel Calvet (programming, audio)",
+                            "Joan Solà (UI, support)"
+                        ]
+                        about_text_box = pygame_gui.elements.UITextBox(
+                            relative_rect=pygame.Rect((10,10),(280,170)),
+                            html_text='\n'.join(about_text),
+                            container=about_window
                         )
                 
                 """# Reset to the first option

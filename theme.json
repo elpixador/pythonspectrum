@@ -35,5 +35,15 @@
   "drop_down_menu.#expand_button":
   {
     "open_button_width": "0"
+  },
+  "vertical_scroll_bar":
+  {
+    "misc":
+         {
+            "shape": "rounded_rectangle",
+            "shape_corner_radius": "5",
+            "border_width": "0",
+            "enable_arrow_buttons": "0"
+         }
   }
 }
