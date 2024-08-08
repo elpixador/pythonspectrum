@@ -82,7 +82,7 @@ def make_8bit_twos_comp(val):
     val += 1
     return val
 
-def subtract8(a, b, cf, registers, PV=False, C=False):
+def subtract8(a, b, cf, PV=False, C=False):
     """ subtract b, a and carry,  return result and set flags """
     res = a - b - cf
     
@@ -99,10 +99,10 @@ def subtract8(a, b, cf, registers, PV=False, C=False):
         ZXFlags.C = res & 0x100
     return res &  0xFF
     
-def subtract8_check_overflow(a, b, cf, registers):
-    return subtract8(a, b, cf, registers, PV=True, C=True)
+def subtract8_check_overflow(a, b, cf):
+    return subtract8(a, b, cf, PV=True, C=True)
 
-def add8(a, b, cf, registers, C=True):
+def add8(a, b, cf, C=True):
     """ add a, b and carry flag,  return result and set flags """
     res = a + b + cf
     ZXFlags.S = res & 0x80
@@ -143,7 +143,7 @@ def a_and_n(registers, n):
     ZXFlags.C = 0
     ZXFlags.Z = (a == 0)
     ZXFlags.S = a & 0x80
-    set_f5_f3(registers, a)
+    set_f5_f3(a)
 
 
 def a_or_n(registers, n):
@@ -155,7 +155,7 @@ def a_or_n(registers, n):
     ZXFlags.C = 0
     ZXFlags.Z = (a == 0)
     ZXFlags.S = a & 0x80
-    set_f5_f3(registers, a)
+    set_f5_f3(a)
     
 def a_xor_n(registers, n):
     a = registers.A ^ n
@@ -166,9 +166,9 @@ def a_xor_n(registers, n):
     ZXFlags.C = 0
     ZXFlags.Z = (a == 0)
     ZXFlags.S = a & 0x80
-    set_f5_f3(registers, a)
+    set_f5_f3(a)
  
-def rotate_left_carry(registers, n):
+def rotate_left_carry(n):
     c = n >> 7
     v = (n << 1 | c) & 0xFF
     ZXFlags.S = v & 0x80
@@ -180,7 +180,7 @@ def rotate_left_carry(registers, n):
     return v
 
 
-def rotate_left(registers, n):
+def rotate_left(n):
     c = n >> 7
     v = (n << 1 | ZXFlags.C) & 0xFF
     ZXFlags.S = v & 0x80
@@ -194,7 +194,7 @@ def rotate_left(registers, n):
 
     
  
-def rotate_right_carry(registers, n):
+def rotate_right_carry(n):
     c = n & 0x01
     v = n >> 1 | (c << 7)
     ZXFlags.S = v & 0x80
@@ -206,7 +206,7 @@ def rotate_right_carry(registers, n):
     return v
 
 
-def rotate_right(registers, n):
+def rotate_right(n):
     c = n & 0x01
     v = n >> 1 | (ZXFlags.C << 7)
     ZXFlags.S = v & 0x80
@@ -218,7 +218,7 @@ def rotate_right(registers, n):
     return v
 
 
-def shift_left(registers, n):
+def shift_left(n):
     c = n >> 7
     v = (n << 1 ) & 0xFF
     ZXFlags.S = v & 0x80
@@ -230,7 +230,7 @@ def shift_left(registers, n):
     return v
 
 
-def shift_left_logical(registers, n):
+def shift_left_logical(n):
     c = n >> 7
     v = ((n << 1 ) & 0xFF) | 0x01
     ZXFlags.S = v & 0x80
@@ -242,7 +242,7 @@ def shift_left_logical(registers, n):
     return v
 
 
-def shift_right(registers, n):
+def shift_right(n):
     c = n & 0x01
     v = n >> 1 | (n & 0x80)
     ZXFlags.S = v & 0x80
@@ -254,7 +254,7 @@ def shift_right(registers, n):
     return v
 
 
-def shift_right_logical(registers, n):
+def shift_right_logical(n):
     c = n & 0x01
     v = n >> 1
     ZXFlags.S = 0
@@ -269,10 +269,8 @@ def shift_right_logical(registers, n):
 def offset_pc(registers, jump):
     registers.PC = (registers.PC + get_8bit_twos_comp(jump)) & 0xFFFF
         
-def set_f5_f3(registers, v):
+def set_f5_f3(v):
     ZXFlags.F5 = v & 0x20
     ZXFlags.F3 = v & 0x08
-        
-def set_f5_f3_from_a(registers):
-    set_f5_f3(registers, registers.A)
+
     
