@@ -105,6 +105,14 @@ class InstructionSet():
                             d[i] = ff
                     else:
                         d[opargs[0][-1]] = ff
+
+        dd = self._instructions2[0xDD]
+        fd = self._instructions2[0xFD]
+        for n in range(256):
+            if not(n in dd):
+                dd[n]=self._instructions2[n]
+            if not(n in fd):
+                fd[n]=self._instructions2[n]
                     
         for n in range(256): parities[n] = parity(n)
 
