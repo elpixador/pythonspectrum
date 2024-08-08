@@ -142,8 +142,8 @@ class Z80(io.Interruptable):
                     ins, args = self.instructions << self._memory[(imadr + 1) & 0xFFFF]
             else:
                 while not ins:
-                    ins, args = self.instructions << self._memory[self.registers.PC]
-                    self.registers.PC = (self.registers.PC + 1) & 0xFFFF
+                    ins, args = self.instructions << self._memory[dict(self.registers)["PC"]]
+                    self.registers.PC = (dict(self.registers)["PC"] + 1) & 0xFFFF
                 #print("{0:X} : {1} ".format(pc, ins.assembler(args)))
 
             wrt = ins.execute(args)
