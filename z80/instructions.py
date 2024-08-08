@@ -121,7 +121,6 @@ class InstructionSet():
         self._instruction_composer = []
         self._composer_instruction = None
         self._composer_len = 1
-        io.ZXRegisterR = self._registers.R
         
     def __lshift__(self, op):
         self._instruction_composer.append(op)
@@ -188,20 +187,14 @@ class InstructionSet():
                   (0xFD64, ("IYH", "IYH"), 8), (0xFD65, ("IYH", "IYL"), 8),
                   (0xFD6F, ("IYL", "A"), 8), (0xFD68, ("IYL", "B"), 8), (0xFD69, ("IYL", "C"), 8), (0xFD6A, ("IYL", "D"), 8), (0xFD6B, ("IYL", "E"), 8),
                   (0xFD6C, ("IYL", "IYH"), 8), (0xFD6D, ("IYL", "IYL"), 8),
-                  (0xED47, ("I", "A"), 9),
+                  (0xED47, ("I", "A"), 9), (0xED4F, ("R", "A"), 9)
                   ], 0, "LD {0}, {1}", 4)
     def ld_r_r_(instruction, registers, r, r_):
         registers[r] = registers[r_]
         return []
     
-    @instruction([(0xED4F, ("R", "A"), 9),], 0, "LD {0}, {1}", 4)
-    def ld_regr_r_(instruction, registers, r, r_):
-        registers[r] = registers[r_]
-        io.ZXRegisterR = registers[r_]
-        return []
-
         
-    @instruction([(0xED57, ('I', ))], 0, "LD A, {0}", 9)
+    @instruction([(0xED57, ('I', )), (0xED5F, ("R", ))], 0, "LD A, {0}", 9)
     def ld_a_i(instruction, registers, r):
         registers.A = registers[r]
         ZXFlags.S = registers[r] & 0x80
@@ -212,18 +205,6 @@ class InstructionSet():
         set_f5_f3(registers.A)
         return []
     
-    @instruction([(0xED5F, ("R", ))], 0, "LD A, {0}", 9)
-    def ld_a_regr(instruction, registers, r):
-        val = (io.ZXRegisterR & 0x7F) | (registers.R & 0x80)
-        registers.A = val
-        ZXFlags.S = val & 0x80
-        ZXFlags.Z = val == 0
-        ZXFlags.H = 0
-        ZXFlags.PV = registers.IFF2
-        ZXFlags.N = 0
-        set_f5_f3(registers.A)
-        return []
-
         
     #@instruction([(0xED47, ("I", )), (0xED5F, ("R", )), (0x00, (), 30) ],
                   #1, "LD {0}, {1}", 9)
@@ -391,21 +372,13 @@ class InstructionSet():
         return []
 
 
-    @instruction([(0xC5, ("B", "C" )), (0xD5, ("D", "E" )), (0xE5, ("H", "L" ))],
+    @instruction([(0xC5, ("B", "C" )), (0xD5, ("D", "E" )), (0xE5, ("H", "L" )), (0xF5, ("A", "F" ))],
                  0, "PUSH {0}{1}", 11)
     def push_qq(instruction, registers, q, q2):
         stack = registers.SP
         registers.SP = (stack - 2) & 0xFFFF
         return [(stack - 1, registers[q]), (stack - 2, registers[q2])]
     
-    @instruction([(0xF5, ("A", "F" ))],
-                 0, "PUSH {0}{1}", 11)
-    def push_af(instruction, registers, q, q2):
-        stack = registers.SP
-        registers.SP = (stack - 2) & 0xFFFF
-        registers.F = ZXFlags.getAsF()
-        return [(stack - 1, registers[q]), (stack - 2, registers[q2])]
-
 
     @instruction([(0xDDE5, ("IX",  )), (0xFDE5, ("IY", ))],
                  0, "PUSH {0}", 15)
@@ -415,7 +388,7 @@ class InstructionSet():
         return [(stack - 1, registers[i] >> 8), (stack - 2, registers[i] & 255)]
 
 
-    @instruction([(0xC1, ("B", "C" )), (0xD1, ("D", "E" )), (0xE1, ("H", "L" ))],
+    @instruction([(0xC1, ("B", "C" )), (0xD1, ("D", "E" )), (0xE1, ("H", "L" )), (0xF1, ("A", "F" ))],
                  0, "POP {0}{1}", 10)
     def pop_qq(instruction, registers, q, q2):
         stack = registers.SP
@@ -424,17 +397,6 @@ class InstructionSet():
         registers[q] = io.ZXmem[stack + 1]
         return []
         
-    @instruction([(0xF1, ("A", "F" ))],
-                 0, "POP {0}{1}", 10)
-    def pop_af(instruction, registers, q, q2):
-        stack = registers.SP
-        registers.SP = (stack + 2) & 0xFFFF
-        registers[q2] = io.ZXmem[stack]
-        registers[q] = io.ZXmem[stack + 1]
-        ZXFlags.setAsF(registers.F)
-        return []
-
-
 
     @instruction([(0xDDE1, ("IX", )), (0xFDE1, ("IY", ))],
                  0, "POP {0}", 14)
@@ -455,10 +417,8 @@ class InstructionSet():
 
     @instruction([(0x08, ())], 0, "EX AF, AF'", 4)
     def ex_af_af_(instruction, registers):
-        registers.F = ZXFlags.getAsF()
         registers.A, registers.A_ = (registers.A_, registers.A)
         registers.F, registers.F_ = (registers.F_, registers.F)
-        ZXFlags.setAsF(registers.F)
         return []
 
     @instruction([(0xD9, ())], 0, "EXX", 4)
