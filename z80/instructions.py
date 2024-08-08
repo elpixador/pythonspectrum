@@ -188,11 +188,11 @@ class InstructionSet():
     @instruction([(0xED57, ('I', )), (0xED5F, ("R", ))], 0, "LD A, {0}", 9)
     def ld_a_ir(instruction, registers, r):
         registers.A = registers[r]
-        registers.condition.S = registers[r] & 0x80
-        registers.condition.Z = registers[r] == 0
-        registers.condition.H = 0
-        registers.condition.PV = registers.IFF2
-        registers.condition.N = 0
+        ZXFlags.S = registers[r] & 0x80
+        ZXFlags.Z = registers[r] == 0
+        ZXFlags.H = 0
+        ZXFlags.PV = registers.IFF2
+        ZXFlags.N = 0
         set_f5_f3_from_a(registers)
         return []
         
@@ -362,11 +362,19 @@ class InstructionSet():
         return []
 
 
-    @instruction([(0xC5, ("B", "C" )), (0xD5, ("D", "E" )), (0xE5, ("H", "L" )), (0xF5, ("A", "F" ))],
+    @instruction([(0xC5, ("B", "C" )), (0xD5, ("D", "E" )), (0xE5, ("H", "L" ))],
                  0, "PUSH {0}{1}", 11)
     def push_qq(instruction, registers, q, q2):
         stack = registers.SP
-        registers.SP = (registers.SP - 2) & 0xFFFF
+        registers.SP = (stack - 2) & 0xFFFF
+        return [(stack - 1, registers[q]), (stack - 2, registers[q2])]
+    
+    @instruction([(0xF5, ("A", "F" ))],
+                 0, "PUSH {0}{1}", 11)
+    def push_af(instruction, registers, q, q2):
+        stack = registers.SP
+        registers.SP = (stack - 2) & 0xFFFF
+        registers.F = ZXFlags.getAsF()
         return [(stack - 1, registers[q]), (stack - 2, registers[q2])]
 
 
@@ -378,7 +386,7 @@ class InstructionSet():
         return [(stack - 1, registers[i] >> 8), (stack - 2, registers[i] & 255)]
 
 
-    @instruction([(0xC1, ("B", "C" )), (0xD1, ("D", "E" )), (0xE1, ("H", "L" )), (0xF1, ("A", "F" ))],
+    @instruction([(0xC1, ("B", "C" )), (0xD1, ("D", "E" )), (0xE1, ("H", "L" ))],
                  0, "POP {0}{1}", 10)
     def pop_qq(instruction, registers, q, q2):
         stack = registers.SP
@@ -386,6 +394,17 @@ class InstructionSet():
         registers[q2] = io.ZXmem[stack]
         registers[q] = io.ZXmem[stack + 1]
         return []
+        
+    @instruction([(0xF1, ("A", "F" ))],
+                 0, "POP {0}{1}", 10)
+    def pop_af(instruction, registers, q, q2):
+        stack = registers.SP
+        registers.SP = (stack + 2) & 0xFFFF
+        registers[q2] = io.ZXmem[stack]
+        registers[q] = io.ZXmem[stack + 1]
+        ZXFlags.setAsF(registers.F)
+        return []
+
 
 
     @instruction([(0xDDE1, ("IX", )), (0xFDE1, ("IY", ))],
@@ -407,8 +426,10 @@ class InstructionSet():
 
     @instruction([(0x08, ())], 0, "EX AF, AF'", 4)
     def ex_af_af_(instruction, registers):
+        registers.F = ZXFlags.getAsF()
         registers.A, registers.A_ = (registers.A_, registers.A)
         registers.F, registers.F_ = (registers.F_, registers.F)
+        ZXFlags.setAsF(registers.F)
         return []
 
     @instruction([(0xD9, ())], 0, "EXX", 4)
@@ -457,12 +478,12 @@ class InstructionSet():
         registers.D = de >> 8
         registers.E = de & 0xFF
 
-        registers.condition.H = 0
-        registers.condition.PV = (bc != 0)
+        ZXFlags.H = 0
+        ZXFlags.PV = (bc != 0)
 
-        registers.condition.N = 0
-        registers.condition.F3 = (registers.A + val) & 0x08
-        registers.condition.F5 = (registers.A + val) & 0x02
+        ZXFlags.N = 0
+        ZXFlags.F3 = (registers.A + val) & 0x08
+        ZXFlags.F5 = (registers.A + val) & 0x02
         return [(de_, val)]
 
     @instruction([(0xEDB0, ())], 0, "LDIR", 21)
@@ -484,7 +505,7 @@ class InstructionSet():
         registers.D = de >> 8
         registers.E = de & 0xFF
 
-        registers.condition.H = 0
+        ZXFlags.H = 0
         if bc != 0:
             registers.PC = dec16(registers.PC)
             registers.PC = dec16(registers.PC)
@@ -492,10 +513,10 @@ class InstructionSet():
         else:
             instruction.tstates = 16
 
-        registers.condition.PV = 0
-        registers.condition.N = 0
-        registers.condition.F3 = (registers.A + val) & 0x08
-        registers.condition.F5 = (registers.A + val) & 0x02
+        ZXFlags.PV = 0
+        ZXFlags.N = 0
+        ZXFlags.F3 = (registers.A + val) & 0x08
+        ZXFlags.F5 = (registers.A + val) & 0x02
         return [(de_, val)]
 
 
@@ -518,11 +539,11 @@ class InstructionSet():
         registers.D = de >> 8
         registers.E = de & 0xFF
 
-        registers.condition.H = 0
-        registers.condition.PV = (bc != 0)
-        registers.condition.N = 0
-        registers.condition.F3 = (registers.A + val) & 0x08
-        registers.condition.F5 = (registers.A + val) & 0x02
+        ZXFlags.H = 0
+        ZXFlags.PV = (bc != 0)
+        ZXFlags.N = 0
+        ZXFlags.F3 = (registers.A + val) & 0x08
+        ZXFlags.F5 = (registers.A + val) & 0x02
         return [(de_, val)]
 
     @instruction([(0xEDB8, ())], 0, "LDDR", 16)
@@ -544,7 +565,7 @@ class InstructionSet():
         registers.D = de >> 8
         registers.E = de & 0xFF
 
-        registers.condition.H = 0
+        ZXFlags.H = 0
         if bc != 0:
             registers.PC = dec16(registers.PC)
             registers.PC = dec16(registers.PC)
@@ -552,10 +573,10 @@ class InstructionSet():
         else:
             instruction.tstates = 16
 
-        registers.condition.PV = 0
-        registers.condition.N = 0
-        registers.condition.F3 = (registers.A + val) & 0x08
-        registers.condition.F5 = (registers.A + val) & 0x02
+        ZXFlags.PV = 0
+        ZXFlags.N = 0
+        ZXFlags.F3 = (registers.A + val) & 0x08
+        ZXFlags.F5 = (registers.A + val) & 0x02
         return [(de_, val)]
 
 
@@ -566,12 +587,12 @@ class InstructionSet():
         registers.BC = dec16(registers.BC)
 
         subtract8(registers.A, val, 0, registers)
-        registers.condition.PV = registers.BC != 0
+        ZXFlags.PV = registers.BC != 0
         # F3 is bit 3 of (A - (HL) - H), H 
         # F5 is bit 1 of (A - (HL) - H), H a
-        f5f3 = registers.A - val -  registers.condition.H
-        registers.condition.F5 = f5f3 & 0x02
-        registers.condition.F3 = f5f3 & 0x08
+        f5f3 = registers.A - val -  ZXFlags.H
+        ZXFlags.F5 = f5f3 & 0x02
+        ZXFlags.F3 = f5f3 & 0x08
         return []
 
     @instruction([(0xEDB1, ())], 0, "CPIR", 16)
@@ -588,10 +609,10 @@ class InstructionSet():
             instruction.tstates = 21
         else:
             instruction.tstates = 16
-        registers.condition.PV = registers.BC != 0
-        f5f3 = registers.A - val -  registers.condition.H
-        registers.condition.F5 = f5f3 & 0x02
-        registers.condition.F3 = f5f3 & 0x08
+        ZXFlags.PV = registers.BC != 0
+        f5f3 = registers.A - val -  ZXFlags.H
+        ZXFlags.F5 = f5f3 & 0x02
+        ZXFlags.F3 = f5f3 & 0x08
         return []
 
     @instruction([(0xEDA9, ())], 0, "CPD", 16)
@@ -601,10 +622,10 @@ class InstructionSet():
         registers.BC = dec16(registers.BC)
 
         subtract8(registers.A, val, 0, registers)
-        registers.condition.PV = registers.BC != 0
-        f5f3 = registers.A - val -  registers.condition.H
-        registers.condition.F5 = f5f3 & 0x02
-        registers.condition.F3 = f5f3 & 0x08
+        ZXFlags.PV = registers.BC != 0
+        f5f3 = registers.A - val -  ZXFlags.H
+        ZXFlags.F5 = f5f3 & 0x02
+        ZXFlags.F3 = f5f3 & 0x08
         return []
 
     @instruction([(0xEDB9, ())], 0, "CPDR", 16)
@@ -621,10 +642,10 @@ class InstructionSet():
             instruction.tstates = 21
         else:
             instruction.tstates = 16
-        registers.condition.PV = registers.BC != 0
-        f5f3 = registers.A - val -  registers.condition.H
-        registers.condition.F5 = f5f3 & 0x02
-        registers.condition.F3 = f5f3 & 0x08
+        ZXFlags.PV = registers.BC != 0
+        f5f3 = registers.A - val -  ZXFlags.H
+        ZXFlags.F5 = f5f3 & 0x02
+        ZXFlags.F3 = f5f3 & 0x08
         return []
 
     #----------------------------------------------------------------------
@@ -672,24 +693,24 @@ class InstructionSet():
                   (0xFD8A, ("D",), 8), (0xFD8B, ("E",), 8), (0xFD8C, ("IYH",), 8),
                   (0xFD8D, ("IYL",), 8)], 0, "ADC A, {0}", 4)
     def adc_a_r(instruction, registers, r):
-        registers.A = add8(registers.A, registers[r], registers.condition.C, registers)
+        registers.A = add8(registers.A, registers[r], ZXFlags.C, registers)
         return []
 
     @instruction([([0xCE, '-'], ())], 1, "ADC A, {0:X}H", 7)
     def adc_a_n(instruction, registers, n):
-        registers.A = add8(registers.A, n, registers.condition.C, registers)
+        registers.A = add8(registers.A, n, ZXFlags.C, registers)
         return []
 
 
     @instruction([(0x8E, ())], 0, "ADC A, (HL)", 7)
     def adc_a_hl_(instruction, registers, ):
-        registers.A = add8(registers.A, io.ZXmem[registers.HL], registers.condition.C, registers)
+        registers.A = add8(registers.A, io.ZXmem[registers.HL], ZXFlags.C, registers)
         return []
 
     @instruction([([0xDD, 0x8E, '-'], ("IX",)),
                   ([0xFD, 0x8E, '-'], ("IY",))], 1, "ADC A, ({0}+{1:X}H)", 19)
     def adc_a_i_(instruction, registers, i, d):
-        registers.A = add8(registers.A, io.ZXmem[registers[i] + get_8bit_twos_comp(d)], registers.condition.C, registers)
+        registers.A = add8(registers.A, io.ZXmem[registers[i] + get_8bit_twos_comp(d)], ZXFlags.C, registers)
         return []
 
     #---- SUB ----
@@ -734,24 +755,24 @@ class InstructionSet():
                   (0xFD9A, ("D",), 8), (0xFD9B, ("E",), 8), (0xFD9C, ("IYH",), 8),
                   (0xFD9D, ("IYL",), 8)], 0, "SBC A, {0}", 4)
     def sbc_a_r(instruction, registers, r):
-        registers.A = subtract8_check_overflow(registers.A, registers[r], registers.condition.C, registers)
+        registers.A = subtract8_check_overflow(registers.A, registers[r], ZXFlags.C, registers)
         return []
 
     @instruction([([0xDE, '-'], ())], 1, "SBC A, {0:X}H", 7)
     def sbc_a_n(instruction, registers, n):
-        registers.A = subtract8_check_overflow(registers.A, n, registers.condition.C, registers)
+        registers.A = subtract8_check_overflow(registers.A, n, ZXFlags.C, registers)
         return []
 
 
     @instruction([(0x9E, ())], 0, "SBC A, (HL)", 7)
     def sbc_a_hl_(instruction, registers):
-        registers.A = subtract8_check_overflow(registers.A, io.ZXmem[registers.HL], registers.condition.C, registers)
+        registers.A = subtract8_check_overflow(registers.A, io.ZXmem[registers.HL], ZXFlags.C, registers)
         return []
 
     @instruction([([0xDD, 0x9E, '-'], ("IX",)),
                   ([0xFD, 0x9E, '-'], ("IY",))], 1, "SBC A, ({0}+{1:X}H)", 19)
     def sbc_a_i_(instruction, registers, i, d):
-        registers.A = subtract8_check_overflow(registers.A, io.ZXmem[registers[i] + get_8bit_twos_comp(d)], registers.condition.C, registers)
+        registers.A = subtract8_check_overflow(registers.A, io.ZXmem[registers[i] + get_8bit_twos_comp(d)], ZXFlags.C, registers)
         return []
 
     #---- AND ----
@@ -921,7 +942,7 @@ class InstructionSet():
                   (0xFD15, ("D",), 8), (0xFD1d, ("E",), 8), (0xFD25, ("IYH",), 8),
                   (0xFD2d, ("IYL",), 8)], 0, "DEC {0}", 4)
     def dec_r(instruction, registers, r):
-        registers.condition.PV = registers[r] == 0x80
+        ZXFlags.PV = registers[r] == 0x80
         registers[r] = subtract8(registers[r], 1, 0, registers)
         return []
 
@@ -929,7 +950,7 @@ class InstructionSet():
     def dec_hl_(instruction, registers):
         val = io.ZXmem[registers.HL]
         new = subtract8(val, 1, 0, registers)
-        registers.condition.PV = (val == 0x80)
+        ZXFlags.PV = (val == 0x80)
         return [(registers.HL, new)]
 
     @instruction([([0xDD, 0x35, '-'], ("IX",)),
@@ -937,7 +958,7 @@ class InstructionSet():
     def dec_i_(instruction, registers, i, d):
         val = io.ZXmem[registers[i] + get_8bit_twos_comp(d)]
         new = subtract8(val, 1, 0, registers)
-        registers.condition.PV = (val == 0x80)
+        ZXFlags.PV = (val == 0x80)
         return [(registers[i] + get_8bit_twos_comp(d), new)]
 
     #--------------------------------------------------------------------
@@ -948,18 +969,18 @@ class InstructionSet():
         # https://github.com/openMSX/openMSX/blob/master/src/cpu/CPUCore.cc
         # http://z80-heaven.wikidot.com/instructions-set:daa
         diff = 0
-        if (registers.condition.H != 0) | ((registers.A & 0x0F) > 0x09): diff |= 0x06
-        if (registers.condition.C != 0) | (registers.A > 0x99): 
+        if (ZXFlags.H != 0) | ((registers.A & 0x0F) > 0x09): diff |= 0x06
+        if (ZXFlags.C != 0) | (registers.A > 0x99): 
             diff |= 0x60
-            registers.condition.C = 1
-        else: registers.condition.C = 0
-        if registers.condition.N == 0: a = (registers.A + diff) & 0xFF
+            ZXFlags.C = 1
+        else: ZXFlags.C = 0
+        if ZXFlags.N == 0: a = (registers.A + diff) & 0xFF
         else: a = get_8bit_twos_comp((registers.A - diff)) & 0xFF
-        registers.condition.H = ((registers.A ^ a) >> 4) & 0x01
+        ZXFlags.H = ((registers.A ^ a) >> 4) & 0x01
         registers.A = a
-        registers.condition.S = registers.A >> 7
-        registers.condition.Z = (registers.A == 0)
-        registers.condition.PV = parities[registers.A]
+        ZXFlags.S = registers.A >> 7
+        ZXFlags.Z = (registers.A == 0)
+        ZXFlags.PV = parities[registers.A]
         set_f5_f3_from_a(registers)
         return []
         """            
@@ -1018,8 +1039,8 @@ class InstructionSet():
     @instruction([(0x2F, ())], 0, "CPL", 4)
     def cpl(instruction, registers):
         registers.A = 0xFF ^ registers.A
-        registers.condition.N = 1
-        registers.condition.H = 1
+        ZXFlags.N = 1
+        ZXFlags.H = 1
         set_f5_f3_from_a(registers)
         return []
 
@@ -1028,23 +1049,23 @@ class InstructionSet():
     def neg(instruction, registers):
         a = registers.A
         registers.A = subtract8(0, a, 0, registers)
-        registers.condition.PV = (a == 0x80)
-        registers.condition.C = (a != 0x00)
+        ZXFlags.PV = (a == 0x80)
+        ZXFlags.C = (a != 0x00)
         return []
 
     @instruction([(0x3F, ())], 0, "CCF", 4)
     def ccf(instruction, registers):
-        registers.condition.H = registers.condition.C
-        registers.condition.N = 0
-        registers.condition.C = not registers.condition.C
+        ZXFlags.H = ZXFlags.C
+        ZXFlags.N = 0
+        ZXFlags.C = not ZXFlags.C
         set_f5_f3_from_a(registers)
         return []
 
     @instruction([(0x37, ())], 0, "SCF", 4)
     def scf(instruction, registers):
-        registers.condition.H = 0
-        registers.condition.N = 0
-        registers.condition.C = 1
+        ZXFlags.H = 0
+        ZXFlags.N = 0
+        ZXFlags.C = 1
         set_f5_f3_from_a(registers)
         return []
 
@@ -1085,11 +1106,11 @@ class InstructionSet():
         a = registers.HL
         b = getattr(registers, reg)
         res = a + b
-        registers.condition.H = (a ^ res ^ b) & 0x1000
-        registers.condition.N = 0
-        registers.condition.C = res & 0x10000
-        registers.condition.F3 = res & 0x0800
-        registers.condition.F5 = res & 0x2000
+        ZXFlags.H = (a ^ res ^ b) & 0x1000
+        ZXFlags.N = 0
+        ZXFlags.C = res & 0x10000
+        ZXFlags.F3 = res & 0x0800
+        ZXFlags.F5 = res & 0x2000
         registers.HL = res &  0xFFFF
         return []
 
@@ -1097,20 +1118,20 @@ class InstructionSet():
     def adc16_hl(instruction, registers, reg):
         a = registers.HL
         b = getattr(registers, reg)
-        res = a + b + registers.condition.C
+        res = a + b + ZXFlags.C
         #print (a, "+",b,"=",res)
-        registers.condition.S = res & 0x8000
-        registers.condition.Z = (res == 0)
+        ZXFlags.S = res & 0x8000
+        ZXFlags.Z = (res == 0)
         if res & 0xFFFF:
-            registers.condition.H = (a ^ res ^ b) & 0x1000
-            registers.condition.PV = (a ^ res) & (b ^ res) & 0x8000
+            ZXFlags.H = (a ^ res ^ b) & 0x1000
+            ZXFlags.PV = (a ^ res) & (b ^ res) & 0x8000
         else:
-            registers.condition.H = (a ^ res) & 0x1000
-            registers.condition.PV = a & res & 0x8000
-        registers.condition.N = 0
-        registers.condition.C = res & 0x10000
-        registers.condition.F3 = res & 0x0800
-        registers.condition.F5 = res & 0x2000
+            ZXFlags.H = (a ^ res) & 0x1000
+            ZXFlags.PV = a & res & 0x8000
+        ZXFlags.N = 0
+        ZXFlags.C = res & 0x10000
+        ZXFlags.F3 = res & 0x0800
+        ZXFlags.F5 = res & 0x2000
         registers.HL = res & 0xFFFF
         return []
         
@@ -1118,19 +1139,19 @@ class InstructionSet():
     def sbc16_hl(instruction, registers, reg):
         a = registers.HL
         b = registers[reg]
-        res = a - b - registers.condition.C
-        registers.condition.S = res & 0x8000
-        registers.condition.N = 1
-        registers.condition.Z = (res == 0)
-        registers.condition.F3 = res & 0x0800
-        registers.condition.F5 = res & 0x2000
+        res = a - b - ZXFlags.C
+        ZXFlags.S = res & 0x8000
+        ZXFlags.N = 1
+        ZXFlags.Z = (res == 0)
+        ZXFlags.F3 = res & 0x0800
+        ZXFlags.F5 = res & 0x2000
         if res & 0xFFFF:
-            registers.condition.H = (a ^ res ^ b) & 0x1000
-            registers.condition.PV = (b ^ a) & (a ^ res) & 0x8000
+            ZXFlags.H = (a ^ res ^ b) & 0x1000
+            ZXFlags.PV = (b ^ a) & (a ^ res) & 0x8000
         else:
-            registers.condition.H = (a ^ b) & 0x1000
-            registers.condition.PV = (b ^ a) & a & 0x8000        
-        registers.condition.C = res & 0x10000
+            ZXFlags.H = (a ^ b) & 0x1000
+            ZXFlags.PV = (b ^ a) & a & 0x8000        
+        ZXFlags.C = res & 0x10000
         registers.HL = res &  0xFFFF
         return []
 
@@ -1141,11 +1162,11 @@ class InstructionSet():
         a = registers[i]
         b = registers[r]
         res = a + b
-        registers.condition.H = (a ^ res ^ b) & 0x1000
-        registers.condition.N = 0
-        registers.condition.C = res & 0x10000
-        registers.condition.F3 = res & 0x0800
-        registers.condition.F5 = res & 0x2000
+        ZXFlags.H = (a ^ res ^ b) & 0x1000
+        ZXFlags.N = 0
+        ZXFlags.C = res & 0x10000
+        ZXFlags.F3 = res & 0x0800
+        ZXFlags.F5 = res & 0x2000
         registers[i] = res & 0xFFFF
         return []
 
@@ -1172,20 +1193,20 @@ class InstructionSet():
     def rlca(instruction, registers):
         c = registers.A >> 7
         registers.A = ((registers.A << 1) | c) & 0xFF
-        registers.condition.C = c
-        registers.condition.H = 0
-        registers.condition.N = 0
+        ZXFlags.C = c
+        ZXFlags.H = 0
+        ZXFlags.N = 0
         set_f5_f3_from_a(registers)
         return []
 
     @instruction([(0x17, ())], 0, "RLA", 4)
     def rla(instruction, registers):
         c = registers.A >> 7
-        pc = registers.condition.C
+        pc = ZXFlags.C
         registers.A = (registers.A << 1 | pc) & 0xFF
-        registers.condition.C = c
-        registers.condition.H = 0
-        registers.condition.N = 0
+        ZXFlags.C = c
+        ZXFlags.H = 0
+        ZXFlags.N = 0
         set_f5_f3_from_a(registers)
         return []
 
@@ -1193,20 +1214,20 @@ class InstructionSet():
     def rrca(instruction, registers):
         c = registers.A & 0x01
         registers.A = (registers.A >> 1 | c << 7) & 0xFF
-        registers.condition.C = c
-        registers.condition.H = 0
-        registers.condition.N = 0
+        ZXFlags.C = c
+        ZXFlags.H = 0
+        ZXFlags.N = 0
         set_f5_f3_from_a(registers)
         return []
 
     @instruction([(0x1F, ())], 0, "RRA", 4)
     def rra(instruction, registers):
         c = registers.A & 0x01
-        pc = registers.condition.C
+        pc = ZXFlags.C
         registers.A = (registers.A >> 1 | pc << 7) & 0xFF
-        registers.condition.C = c
-        registers.condition.H = 0
-        registers.condition.N = 0
+        ZXFlags.C = c
+        ZXFlags.H = 0
+        ZXFlags.N = 0
         set_f5_f3_from_a(registers)
         return []
         
@@ -1432,11 +1453,11 @@ class InstructionSet():
         a = (val >> 4) | (registers.A & 0xF0)
         hl = ((val << 4) | (registers.A & 0x0f)) & 0xFF
         registers.A = a
-        registers.condition.S = a & 0x80
-        registers.condition.Z = a == 0
-        registers.condition.H = 0
-        registers.condition.N = 0
-        registers.condition.PV = parities[a]
+        ZXFlags.S = a & 0x80
+        ZXFlags.Z = a == 0
+        ZXFlags.H = 0
+        ZXFlags.N = 0
+        ZXFlags.PV = parities[a]
         set_f5_f3(registers, registers.A)
         return [(registers.HL, hl)]
 
@@ -1447,11 +1468,11 @@ class InstructionSet():
         a = (val & 0x0F) | (registers.A & 0xF0)
         hl = ((val >> 4) | (registers.A << 4))  & 0xFF
         registers.A = a
-        registers.condition.S = a & 0x80
-        registers.condition.Z = a == 0
-        registers.condition.H = 0
-        registers.condition.N = 0
-        registers.condition.PV = parities[a]
+        ZXFlags.S = a & 0x80
+        ZXFlags.Z = a == 0
+        ZXFlags.H = 0
+        ZXFlags.N = 0
+        ZXFlags.PV = parities[a]
         set_f5_f3(registers, registers.A)
         return [(registers.HL, hl)]
 
@@ -1468,11 +1489,11 @@ class InstructionSet():
     def bit_r(instruction, registers, bit, reg):
         # print "Test bit ", bit
         val = registers[reg] & (0x01 << bit)
-        registers.condition.Z = (val == 0)
-        registers.condition.H = 1
-        registers.condition.N = 0
-        registers.condition.PV = registers.condition.Z            
-        registers.condition.S = val & 0x80
+        ZXFlags.Z = (val == 0)
+        ZXFlags.H = 1
+        ZXFlags.N = 0
+        ZXFlags.PV = ZXFlags.Z            
+        ZXFlags.S = val & 0x80
         #if bit == 5:
             #registers.condition.F5 = (registers[reg] & (0x01 << bit))
         #if bit == 3:
@@ -1485,11 +1506,11 @@ class InstructionSet():
     def bit_hl(instruction, registers, bit):
         val = io.ZXmem[registers.HL]
         res = val & (0x01 << bit)
-        registers.condition.Z = (res == 0)
-        registers.condition.H = 1
-        registers.condition.N = 0
-        registers.condition.PV = registers.condition.Z
-        registers.condition.S = res & 0x80
+        ZXFlags.Z = (res == 0)
+        ZXFlags.H = 1
+        ZXFlags.N = 0
+        ZXFlags.PV = ZXFlags.Z
+        ZXFlags.S = res & 0x80
         set_f5_f3(registers, val)
         return []
 
@@ -1498,11 +1519,11 @@ class InstructionSet():
     def bit_i(instruction, registers, i, bit, d):
         val = io.ZXmem[registers[i]+get_8bit_twos_comp(d)]
         res = val & (0x01 << bit)
-        registers.condition.Z = (res == 0)
-        registers.condition.H = 1
-        registers.condition.N = 0
-        registers.condition.PV = registers.condition.Z
-        registers.condition.S = res & 0x80
+        ZXFlags.Z = (res == 0)
+        ZXFlags.H = 1
+        ZXFlags.N = 0
+        ZXFlags.PV = ZXFlags.Z
+        ZXFlags.S = res & 0x80
         set_f5_f3(registers, (registers[i]+get_8bit_twos_comp(d)) >> 8)
         return []
 
@@ -1567,7 +1588,7 @@ class InstructionSet():
                   for offset, reg_name, reg, val in conditions],
                  2, "JP {1}, {4:x}{3:X}H", 10)
     def jp_c(instruction, registers, reg, reg_name, val, n, n2):
-        if getattr(registers.condition, reg) == val:
+        if ZXFlags.equals(reg, val):
             registers.PC = n2 << 8 | n
         return []
               
@@ -1582,7 +1603,7 @@ class InstructionSet():
     @instruction([([0x20, '-'], ())],
                  2, "JR NZ, {0:X}H", 12)
     def jr_nz(instruction, registers, n):
-        if not registers.condition.Z:
+        if not ZXFlags.Z:
             offset_pc(registers, n)
             instruction.tstates = 12
         else:
@@ -1593,7 +1614,7 @@ class InstructionSet():
     @instruction([([0x28, '-'], ())],
                  2, "JR Z, {0:X}H", 12)
     def jr_z(instruction, registers, n):
-        if registers.condition.Z:
+        if ZXFlags.Z:
             offset_pc(registers, n)
             instruction.tstates = 12
         else:
@@ -1604,7 +1625,7 @@ class InstructionSet():
     @instruction([([0x30, '-'], ())],
                  2, "JR NC, {0:X}H", 12)
     def jr_nc(instruction, registers, n):
-        if not registers.condition.C:
+        if not ZXFlags.C:
             offset_pc(registers, n)
             instruction.tstates = 12
         else:
@@ -1615,7 +1636,7 @@ class InstructionSet():
     @instruction([([0x38, '-'], ())],
                  2, "JR C, {0:X}H", 12)
     def jr_c(instruction, registers, n):
-        if registers.condition.C:
+        if ZXFlags.C:
             offset_pc(registers, n)
             instruction.tstates = 12
         else:
@@ -1656,7 +1677,7 @@ class InstructionSet():
                   for offset, reg_name, reg, val in conditions],
                  2, "CALL {1}, {4:x}{3:X}H", 17)
     def call_c(instruction, registers, reg, reg_name, val, n, n2):
-        if getattr(registers.condition, reg) == val:
+        if ZXFlags.equals(reg, val):
             instruction.tstates = 17
             sp = (registers.SP - 2) & 0xFFFF
             pc = registers.PC
@@ -1680,7 +1701,7 @@ class InstructionSet():
                   for offset, reg_name, reg, val in conditions],
                  2, "RET {1}", 11)
     def ret_c(instruction, registers, reg, reg_name, val):
-        if getattr(registers.condition, reg) == val:
+        if ZXFlags.equals(reg, val):
             sp = registers.SP
             registers.SP = (sp + 2) & 0xFFFF
             registers.PC = io.ZXmem[inc16(sp)] << 8 | io.ZXmem[sp]
@@ -1734,11 +1755,11 @@ class InstructionSet():
     def in_r_c(instruction, registers, r):
         address = registers.C | (registers.B << 8) #n | (registers.A << 8)
         res = io.ZXports.read(address)
-        registers.condition.S = res & 0x80
-        registers.condition.Z = res == 0
-        registers.condition.H = 0
-        registers.condition.PV = parities[res]
-        registers.condition.N = 0
+        ZXFlags.S = res & 0x80
+        ZXFlags.Z = res == 0
+        ZXFlags.H = 0
+        ZXFlags.PV = parities[res]
+        ZXFlags.N = 0
         if r == "F":
             return []
         registers[r] = res
@@ -1752,8 +1773,8 @@ class InstructionSet():
         hl = registers.HL
         registers.B = dec8(registers.B)
         registers.HL = inc16(hl)
-        registers.condition.N = 1
-        registers.condition.Z = registers.B == 0
+        ZXFlags.N = 1
+        ZXFlags.Z = registers.B == 0
         return [(hl, res)]
         
         
@@ -1765,8 +1786,8 @@ class InstructionSet():
         hl = registers.HL
         registers.B = dec8(registers.B)
         registers.HL = inc16(hl)
-        registers.condition.N = 1
-        registers.condition.Z = registers.B == 0
+        ZXFlags.N = 1
+        ZXFlags.Z = registers.B == 0
         if registers.B != 0:
             dec16(registers.PC)
             dec16(registers.PC)
@@ -1783,8 +1804,8 @@ class InstructionSet():
         hl = registers.HL
         registers.B = dec8(registers.B)
         registers.HL = dec16(hl)
-        registers.condition.N = 1
-        registers.condition.Z = registers.B == 0
+        ZXFlags.N = 1
+        ZXFlags.Z = registers.B == 0
         return [(hl, res)]
         
         
@@ -1796,8 +1817,8 @@ class InstructionSet():
         hl = registers.HL
         registers.B = dec8(registers.B)
         registers.HL = dec16(hl)
-        registers.condition.N = 1
-        registers.condition.Z = registers.B == 0
+        ZXFlags.N = 1
+        ZXFlags.Z = registers.B == 0
         if registers.B != 0:
             dec16(registers.PC)
             dec16(registers.PC)
@@ -1832,8 +1853,8 @@ class InstructionSet():
         address = registers.C | (registers.B << 8)
         registers.B = dec8(registers.B)
         registers.HL = inc16(registers.HL)
-        registers.condition.N = 1
-        registers.condition.Z = registers.B == 0
+        ZXFlags.N = 1
+        ZXFlags.Z = registers.B == 0
         io.ZXports.write(address, val)
         return []
         
@@ -1845,8 +1866,8 @@ class InstructionSet():
         val = io.ZXmem[registers.HL]
         registers.B = dec8(registers.B)
         registers.HL = inc16(registers.HL)
-        registers.condition.N = 1
-        registers.condition.Z = registers.B == 0
+        ZXFlags.N = 1
+        ZXFlags.Z = registers.B == 0
         if registers.B != 0:
             dec16(registers.PC)
             dec16(registers.PC)
@@ -1864,8 +1885,8 @@ class InstructionSet():
         val = io.ZXmem[registers.HL]
         registers.B = dec8(registers.B)
         registers.HL = dec16(registers.HL)
-        registers.condition.N = 1
-        registers.condition.Z = registers.B == 0
+        ZXFlags.N = 1
+        ZXFlags.Z = registers.B == 0
         io.ZXports.write(registers.BC, val)
         return []
         
@@ -1877,8 +1898,8 @@ class InstructionSet():
         val = io.ZXmem[registers.HL]
         registers.B = dec8(registers.B)
         registers.HL = dec16(registers.HL)
-        registers.condition.N = 1
-        registers.condition.Z = registers.B == 0
+        ZXFlags.N = 1
+        ZXFlags.Z = registers.B == 0
         if registers.B != 0:
             dec16(registers.PC)
             dec16(registers.PC)
