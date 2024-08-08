@@ -1,5 +1,6 @@
-ZXports = None # el poso aquí per a que sigui global
+ZXports = None # els poso aquí per a que siguin globals
 ZXmem = bytearray(65536)
+ZXRegisterR = 0
 
 class IO(object):
     _addresses = []
