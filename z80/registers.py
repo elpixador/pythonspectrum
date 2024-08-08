@@ -63,9 +63,12 @@ class Registers(dict):
     def __setattr__(self, attr, val):
         if attr in self:
             super(Registers, self).__setitem__(attr, val)
-        elif attr  in ["HL", "AF", "BC", "DE"]:
+        elif attr  in ["HL", "BC", "DE"]:
             super(Registers, self).__setitem__(attr[0], val >> 8)
             super(Registers, self).__setitem__(attr[1], val & 0xFF)
+        elif attr == "AF":
+            super(Registers, self).__setitem__("A", val >> 8)
+            util.ZXFlags.setAsF(val & 0xFF)
         elif attr == "F":
             util.ZXFlags.setAsF(val)
         elif attr in ["IXH", "IYH"]:
@@ -81,8 +84,10 @@ class Registers(dict):
     def __getattr__(self, reg):
         if reg in self:
             return super(Registers, self).__getitem__(reg)
-        elif reg in ["HL", "AF", "BC", "DE"]:
+        elif reg in ["HL", "BC", "DE"]:
             return super(Registers, self).__getitem__(reg[0]) << 8 | super(Registers, self).__getitem__(reg[1])
+        elif reg == "AF":
+            return super(Registers, self).__getitem__("A") << 8 | util.ZXFlags.getAsF()
         elif reg == "F":
             return util.ZXFlags.getAsF()
         elif reg in ["IXH", "IYH"]:
@@ -95,8 +100,10 @@ class Registers(dict):
     def __getitem__(self, reg):
         if reg in self:
             return super(Registers, self).__getitem__(reg)
-        elif reg in ["BC", "HL", "DE", "AF"]:
+        elif reg in ["BC", "HL", "DE"]:
             return super(Registers, self).__getitem__(reg[0]) << 8 |  super(Registers, self).__getitem__(reg[1])
+        elif reg == "AF":
+            return super(Registers, self).__getitem__("A") << 8 | util.ZXFlags.getAsF()
         elif reg == "F":
             return util.ZXFlags.getAsF()
         elif reg in ["IXH", "IXL", "IYH", "IYL"]:
@@ -109,9 +116,12 @@ class Registers(dict):
     def __setitem__(self, reg, val):
         if reg in self:
             return super(Registers, self).__setitem__(reg, val)
-        elif reg in ["BC", "HL", "DE", "AF"]:
+        elif reg in ["BC", "HL", "DE"]:
             super(Registers, self).__setitem__(reg[0], val >> 8)
             super(Registers, self).__setitem__(reg[1], val & 0xFF)
+        elif reg == "AF":
+            super(Registers, self).__setitem__("A", val >> 8)
+            util.ZXFlags.setAsF(val & 0xFF)
         elif reg == "F":
             util.ZXFlags.setAsF(val)
         elif reg in ["IXH", "IXL", "IYH", "IYL"]:
