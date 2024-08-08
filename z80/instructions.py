@@ -496,8 +496,7 @@ class InstructionSet():
 
         ZXFlags.H = 0
         if bc != 0:
-            registers.PC = dec16(registers.PC)
-            registers.PC = dec16(registers.PC)
+            registers.PC = (registers.PC - 2) & 0xFFFF
             instruction.tstates = 21
         else:
             instruction.tstates = 16
@@ -556,8 +555,7 @@ class InstructionSet():
 
         ZXFlags.H = 0
         if bc != 0:
-            registers.PC = dec16(registers.PC)
-            registers.PC = dec16(registers.PC)
+            registers.PC = (registers.PC - 2) & 0xFFFF
             instruction.tstates = 21
         else:
             instruction.tstates = 16
@@ -593,8 +591,7 @@ class InstructionSet():
         res = subtract8(registers.A, val, 0)
 
         if registers.BC != 0 and res != 0:
-            registers.PC = dec16(registers.PC)
-            registers.PC = dec16(registers.PC)
+            registers.PC = (registers.PC - 2) & 0xFFFF
             instruction.tstates = 21
         else:
             instruction.tstates = 16
@@ -626,8 +623,7 @@ class InstructionSet():
         res = subtract8(registers.A, val, 0)
 
         if registers.BC != 0 and res != 0:
-            registers.PC = dec16(registers.PC)
-            registers.PC = dec16(registers.PC)
+            registers.PC = (registers.PC - 2) & 0xFFFF
             instruction.tstates = 21
         else:
             instruction.tstates = 16
@@ -1778,8 +1774,7 @@ class InstructionSet():
         ZXFlags.N = 1
         ZXFlags.Z = registers.B == 0
         if registers.B != 0:
-            dec16(registers.PC)
-            dec16(registers.PC)
+            registers.PC = (registers.PC - 2) & 0xFFFF
             instruction.tstates = 21
         else:
             instruction.tstates = 16
@@ -1809,8 +1804,7 @@ class InstructionSet():
         ZXFlags.N = 1
         ZXFlags.Z = registers.B == 0
         if registers.B != 0:
-            dec16(registers.PC)
-            dec16(registers.PC)
+            registers.PC = (registers.PC - 2) & 0xFFFF
             instruction.tstates = 21
         else:
             instruction.tstates = 16
@@ -1858,8 +1852,7 @@ class InstructionSet():
         ZXFlags.N = 1
         ZXFlags.Z = registers.B == 0
         if registers.B != 0:
-            dec16(registers.PC)
-            dec16(registers.PC)
+            registers.PC = (registers.PC - 2) & 0xFFFF
             instruction.tstates = 21
         else:
             instruction.tstates = 16
@@ -1890,8 +1883,7 @@ class InstructionSet():
         ZXFlags.N = 1
         ZXFlags.Z = registers.B == 0
         if registers.B != 0:
-            dec16(registers.PC)
-            dec16(registers.PC)
+            registers.PC = (registers.PC - 2) & 0xFFFF
             instruction.tstates = 21
         else:
             instruction.tstates = 16
