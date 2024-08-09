@@ -1,4 +1,5 @@
 import sys, os, threading, platform
+from typing import Optional
 
 import pygame
 # PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
@@ -213,6 +214,36 @@ class Worker:
             self.start()
             print("Worker started")
 
+class AboutWindow(pygame_gui.elements.UIWindow):
+    def __init__(self, rect, ui_manager):
+        super().__init__(rect, ui_manager,
+                        window_display_title='About '+APPNAME+"...",
+                        object_id='#about_window',
+                        resizable=True)
+        image = pygame.image.load('zxspectrum.png').convert_alpha()
+        self.test_image = pygame_gui.elements.UIImage(
+            pygame.Rect((10, 10), (self.get_container().get_size()[0] - 20,
+            self.get_container().get_size()[1] - 20)),
+            image, 
+            self.ui_manager,
+            container=self
+        )
+        text_contents = [(70, 40, (str(APPNAME) + " v" + str(APPVERSION))),
+                        (20, 20, "Sergi Martinez (z80, project lead)"),
+                        (20, 20, "Manel Calvet (programming, audio)"),
+                        (20, 20, "Joan Solà (UI, support)")] 
+        ypos = 30
+        for xpos, linspace, text in text_contents:
+            pygame_gui.elements.UILabel(
+                                    pygame.Rect((xpos,ypos), (-1, -1)),
+                                    text,
+                                    self.ui_manager,
+                                    container=self
+                                    )
+            ypos += linspace
+
+        self.set_blocking(True)
+        
 class Screen():
     DEFAULT_SCALE = 3
     MAXSCALE = 5
@@ -232,11 +263,11 @@ class Screen():
         # border color
         self.bcolor = 7 # white, default screen
         # window name
-        self.caption = "Pythonspectrum"
+        self.caption = APPNAME
         # app icon
         self.icon = "./window.png"
         # placeholders for screen and ui_manager
-        self.screen = None
+        self.screen: Optional[Screen] = None
         self.ui_manager = None
         # dropdown menu options
         self.ddm_options = None
@@ -630,6 +661,8 @@ def renderscreenDiff():
 # INICI
 print("Platform is: ", platform.system())
 
+APPNAME = "Pythonspectrum"
+APPVERSION = "1.0"
 ZX_RES = ZXWIDTH, ZXHEIGHT = 256, 192
 ROM = "jocs/spectrum.rom"
 
@@ -724,27 +757,9 @@ while True:
                     case "Freeze":
                         worker.toggle()
                     case "About":
-                        about_window = None
-                        about_text_block = None
-                        about_text = None
-                        about_window = pygame_gui.elements.UIWindow(
-                            rect=pygame.Rect((10, 60), (320, 220)),
-                            manager=main_screen.ui_manager,
-                            window_display_title="About Pythonspectrum",
-                            object_id="#about_dialog"
-                        )
-                        about_text = [
-                            "<p style=\"align:center\">Pythonspectrum 1.0</p>",
-                            "Sergi Martinez (z80, project lead)",
-                            "Manel Calvet (programming, audio)",
-                            "Joan Solà (UI, support)"
-                        ]
-                        about_text_box = pygame_gui.elements.UITextBox(
-                            relative_rect=pygame.Rect((10,10),(280,170)),
-                            html_text='\n'.join(about_text),
-                            container=about_window
-                        )
-                
+                        about_window = AboutWindow(((10, 50), (280, 190)),main_screen.ui_manager)
+
+                main_screen.b_dropdown.rebuild()
                 """# Reset to the first option
                 dropdown_menu.selected_option = dropdown_options[0]
                 dropdown_menu.selected_option_text = dropdown_options[0]

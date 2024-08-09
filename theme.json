@@ -36,14 +36,28 @@
   {
     "open_button_width": "0"
   },
-  "vertical_scroll_bar":
+ "label":
+ {
+  "colours":
   {
-    "misc":
-         {
-            "shape": "rounded_rectangle",
-            "shape_corner_radius": "5",
-            "border_width": "0",
-            "enable_arrow_buttons": "0"
-         }
+      "normal_text": "#ffffff",
+      "text_shadow": "#505050"
+  },
+"font":
+    {
+        "name": "Monocraft",
+        "size": "10",
+        "bold": "0",
+        "italic": "0",
+        "regular_path": "./Monocraft-no-ligatures.ttf"
+    },
+  "misc":
+  {
+      "text_shadow": "1",
+      "text_shadow_size": "1",
+      "text_shadow_offset": "0,0"
   }
+ }
+
+
 }
