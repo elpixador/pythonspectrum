@@ -123,17 +123,15 @@ class Z80(io.Interruptable):
     def step_instruction(self, cicles):
         while cicles > 0:
             ins = False
+            pc = dict(self.registers)["PC"]
 
             if self._interrupted and self.registers.IFF:
                 self._interrupted = False
                 if self.registers.HALT:
                     self.registers.HALT = False
-                    self.registers.PC = util.inc16(self.registers.PC)
+                    self.registers.PC = util.inc16(pc)
                 if self.registers.IM == 1:
                     # print ("!!! Interrupt Mode 1 !!!")
-                    #ins, args = self.instructions << 0xCD
-                    #ins, args = self.instructions << 0x38
-                    #ins, args = self.instructions << 0x00
                     ins, args = self.instructions << 0xFF
                 elif self.registers.IM == 2:
                     # print ("!!! Interrupt Mode 2 !!!")
@@ -143,8 +141,8 @@ class Z80(io.Interruptable):
                     ins, args = self.instructions << self._memory[(imadr + 1) & 0xFFFF]
             else:
                 while not ins:
-                    ins, args = self.instructions << self._memory[dict(self.registers)["PC"]]
-                    self.registers.PC = (dict(self.registers)["PC"] + 1) & 0xFFFF
+                    ins, args = self.instructions << self._memory[pc]
+                    self.registers.PC = pc = (pc + 1) & 0xFFFF
                 #print("{0:X} : {1} ".format(pc, ins.assembler(args)))
 
             wrt = ins.execute(args)
