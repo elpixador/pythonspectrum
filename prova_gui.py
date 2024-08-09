@@ -187,6 +187,7 @@ class Worker:
             if (contascans == 442):
                 contascans = 0
                 mach.interrupt()
+                clock.tick(50)
     
     def start(self):
         if self.thread is not None and self.thread.is_alive():
@@ -770,8 +771,8 @@ while True:
 
     renderscreenDiff()
     main_screen.draw_screen(zx_screen)
-    time_delta = clock.tick(60)/1000.0
-    main_screen.ui_manager.update(time_delta)
+   # time_delta = clock.tick(60)/1000.0
+    main_screen.ui_manager.update(0)
     main_screen.ui_manager.draw_ui(main_screen.screen) # type: ignore
     stream.write(buffaudio)
     pygame.display.update()
