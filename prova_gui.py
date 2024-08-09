@@ -226,11 +226,14 @@ class AboutWindow(pygame_gui.elements.UIWindow):
             self.ui_manager,
             container=self
         )
-        text_contents = [(70, 40, (str(APPNAME) + " v" + str(APPVERSION))),
-                        (20, 20, "Sergi Martinez (z80, project lead)"),
+        text_contents = [(70, 30, (str(APPNAME) + " v" + str(APPVERSION))),
+                        (20, 20, "Pixador (Z80 tweaking)"),
                         (20, 20, "Manel Calvet (programming, audio)"),
-                        (20, 20, "Joan Solà (UI, support)")] 
-        ypos = 30
+                        (20, 20, "Joan Solà (UI, support)"),
+                        (20, 10, "Based on the Z80 emulator by"),
+                        (20, 10, "Chris Burbridge"),
+                        (20, 10, "https://github.com/cburbridge/z80")]
+        ypos = 20
         for xpos, linspace, text in text_contents:
             pygame_gui.elements.UILabel(
                                     pygame.Rect((xpos,ypos), (-1, -1)),
@@ -745,7 +748,7 @@ while True:
                         pygame.event.post(pygame.event.Event(pygame.QUIT))
                     case "Reset":
                         worker.stop()
-                        mach.registers.PC=0
+                        mach.registers.reset()
                         worker.start()
                     case "Screenshot":
                         area = main_screen.dimensions[0], main_screen.dimensions[1] - main_screen.UI_HEIGHT
