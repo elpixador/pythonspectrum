@@ -219,7 +219,7 @@ class AboutWindow(pygame_gui.elements.UIWindow):
                         window_display_title='About '+APPNAME+"...",
                         object_id='#about_window',
                         resizable=True)
-        image = pygame.image.load('zxspectrum.png').convert_alpha()
+        image = pygame.image.load('./assets/zxspectrum.png').convert_alpha()
         self.test_image = pygame_gui.elements.UIImage(
             pygame.Rect((10, 10), (self.get_container().get_size()[0] - 20,
             self.get_container().get_size()[1] - 20)),
@@ -267,7 +267,7 @@ class Screen():
         # window name
         self.caption = APPNAME
         # app icon
-        self.icon = "./window.png"
+        self.icon = "./assets/window.png"
         # placeholders for screen and ui_manager
         self.screen: Optional[Screen] = None
         self.ui_manager = None
@@ -287,12 +287,12 @@ class Screen():
         # init main screen to fit it all (spectrum, border & gui) 
         self.screen = pygame.display.set_mode(self.dimensions, vsync=0)
         # pintem un fons maco on posarem els botonets
-        fons = pygame.image.load('buttonbg.png').convert()
+        fons = pygame.image.load('./assets/buttonbg.png').convert()
         fons = pygame.transform.scale(fons, (self.width, self.UI_HEIGHT))
         self.screen.blit(fons,(0,0))
     
     def init_gui(self):
-        self.ui_manager = pygame_gui.UIManager(self.dimensions,'./theme.json')
+        self.ui_manager = pygame_gui.UIManager(self.dimensions,'./assets/theme.json')
         buttonWidth = 110
         buttonHeight = self.UI_HEIGHT-2
         gap = 3
