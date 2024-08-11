@@ -21,6 +21,7 @@ colorTable = ( # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour_
 )
 flashReversed = False
 pantalla = None
+screenCache = []
 bordercolor = 0
 
 class portFE(io.IO):
@@ -275,37 +276,48 @@ def decodecolor(atribut):
 def renderline(screenY):
    # (376, 312)
    global bordercolor
-   border = colorTable[0][bordercolor]
-   if (screenY < 60) or (screenY > 251): 
-      pygame.draw.line(pantalla, border, (0, screenY), (375, screenY))
+   if (screenY < 60) or (screenY > 251):
+      if screenCache[screenY][3] != bordercolor:
+         pygame.draw.line(pantalla, colorTable[0][bordercolor], (0, screenY), (375, screenY))
+         screenCache[screenY][3] = bordercolor
    else:
       y = screenY - 60
       adr_attributs = 22528 + ((y >> 3)*32)
       # 000 tt zzz yyy xxxxx
       adr_pattern = 16384 + (((y & 0b11000000) | ((y & 0b111) << 3) | (y & 0b111000) >> 3) << 5)
-      pygame.draw.line(pantalla, border, (0, screenY), (59, screenY))
+      if screenCache[screenY][3] != bordercolor:
+         border = colorTable[0][bordercolor]
+         pygame.draw.line(pantalla, border, (0, screenY), (59, screenY))
+         pygame.draw.line(pantalla, border, (316, screenY), (375, screenY))
+         screenCache[screenY][3] = bordercolor
       x = 60
       for col in range(32):      
          ink, paper = decodecolor(io.ZXmem[adr_attributs])
          m = io.ZXmem[adr_pattern]
-         b = 0b10000000
-         while b:
-            if (m & b):
-               pantalla.set_at((x, screenY), ink)
-            else:
-               pantalla.set_at((x, screenY), paper)
-            x = x + 1
-            b = b >> 1
-         adr_pattern = adr_pattern + 1
-         adr_attributs = adr_attributs + 1
-         pygame.draw.line(pantalla, border, (316, screenY), (375, screenY))
+         cc = screenCache[adr_pattern - 16384]
+         if (cc[0] != m) or (cc[1] != ink) or (cc[2] != paper):
+            cc[0] = m
+            cc[1] = ink
+            cc[2] = paper
+            b = 0b10000000
+            while b:
+               if (m & b):
+                  pantalla.set_at((x, screenY), ink)
+               else:
+                  pantalla.set_at((x, screenY), paper)
+               x += 1
+               b >>= 1
+         else:
+            x += 8
+         adr_pattern += 1
+         adr_attributs += 1
+
 
 def renderscreenFull():
-   dir = 16384
-   for y in range(192):
-      # 000 tt zzz yyy xxxxx
-      offset = ((y & 0b11000000) | ((y & 0b111) << 3) | (y & 0b111000) >> 3) << 5
-      renderline(y, dir+offset)
+   for y in range(len(screenCache)):
+      cc = screenCache[y]
+      for n in range(len(cc)): cc[n] = -1
+   for y in range(312): renderline(y)
 
 
 class Z80(io.Interruptable):
@@ -362,8 +374,11 @@ mach = Z80()
 readROM("jocs/spectrum.rom") #carreguem la rom sempre
 readSpectrumFile() #funció que càrrega qualsevol snapshoot de spectrum... en cas de no fer-ho arrenca la ROM per defecte
 
+for i in range(6144): screenCache.append([-1, -1, -1, -1]) # attr, ink, paper, border
+
 pygame.init()
-pantalla = pygame.display.set_mode((376, 312), pygame.SCALED,  vsync=1)
+#pantalla = pygame.display.set_mode((376, 312), pygame.SCALED,  vsync=1)
+pantalla = pygame.display.set_mode((376, 310), pygame.SCALED,  vsync=1)
 pygame.display.set_caption("Hello from Spectrum World")
 
 
