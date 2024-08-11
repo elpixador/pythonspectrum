@@ -291,10 +291,10 @@ def renderline(screenY):
          pygame.draw.line(pantalla, border, (316, screenY), (375, screenY))
          screenCache[screenY][3] = bordercolor
       x = 60
-      for col in range(32):      
+      for col in range(32):
          ink, paper = decodecolor(io.ZXmem[adr_attributs])
          m = io.ZXmem[adr_pattern]
-         cc = screenCache[adr_pattern - 16384]
+         cc = screenCache[adr_pattern & 0x1FFF]
          if (cc[0] != m) or (cc[1] != ink) or (cc[2] != paper):
             cc[0] = m
             cc[1] = ink
