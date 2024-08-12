@@ -36,7 +36,7 @@ colorTable = (  # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour
     ),  # bright 1
 )
 flashReversed = False
-tilechanged = [True] * 768
+screenCache = []
 
 # classes
 class portFE(io.IO):
@@ -120,46 +120,37 @@ class Z80(io.Interruptable):
     def interrupt(self):
         self._interrupted = True
 
-    def step_instruction(self, cicles):
-        while cicles > 0:
-            ins = False
-            pc = dict(self.registers)["PC"]
+    def step_instruction(self):
+        ins = False
+        pc = dict(self.registers)["PC"]
 
-            if self._interrupted and self.registers.IFF:
-                self._interrupted = False
-                if self.registers.HALT:
-                    self.registers.HALT = False
-                    self.registers.PC = util.inc16(pc)
-                if self.registers.IM == 1:
-                    # print ("!!! Interrupt Mode 1 !!!")
-                    ins, args = self.instructions << 0xFF
-                elif self.registers.IM == 2:
-                    # print ("!!! Interrupt Mode 2 !!!")
-                    imadr = (self.registers.I << 8) | 0xFF
-                    ins, args = self.instructions << 0xCD
-                    ins, args = self.instructions << self._memory[imadr & 0xFFFF]
-                    ins, args = self.instructions << self._memory[(imadr + 1) & 0xFFFF]
-            else:
-                while not ins:
-                    ins, args = self.instructions << self._memory[pc]
-                    self.registers.PC = pc = (pc + 1) & 0xFFFF
-                #print("{0:X} : {1} ".format(pc, ins.assembler(args)))
+        if self._interrupted and self.registers.IFF:
+            self._interrupted = False
+            if self.registers.HALT:
+                self.registers.HALT = False
+                self.registers.PC = util.inc16(pc)
+            if self.registers.IM == 1:
+                # print ("!!! Interrupt Mode 1 !!!")
+                ins, args = self.instructions << 0xFF
+            elif self.registers.IM == 2:
+                # print ("!!! Interrupt Mode 2 !!!")
+                imadr = (self.registers.I << 8) | 0xFF
+                ins, args = self.instructions << 0xCD
+                ins, args = self.instructions << self._memory[imadr & 0xFFFF]
+                ins, args = self.instructions << self._memory[(imadr + 1) & 0xFFFF]
+        else:
+            while not ins:
+                ins, args = self.instructions << self._memory[pc]
+                self.registers.PC = pc = (pc + 1) & 0xFFFF
+            #print("{0:X} : {1} ".format(pc, ins.assembler(args)))
 
-            wrt = ins.execute(args)
+        wrt = ins.execute(args)
 
-            for i in wrt:
-                adr = i[0]
-                if (adr > 23295): self._memory[adr] = i[1] # RAM normal
-                elif ((adr > 16383) and (self._memory[adr] != i[1])): # És pantalla i ha canviat?
-                    self._memory[adr] = i[1]
-                    if (adr < 22528): # Patrons o atributs?
-                        tilechanged[((adr & 0b0001100000000000) >> 3) | adr & 0b11111111] = True
-                    else:
-                        tilechanged[adr & 0b0000001111111111] = True
+        for i in wrt:
+            adr = i[0]
+            if (adr > 16383): self._memory[adr] = i[1] # RAM normal
 
-            cicles -= ins.tstates
-
-        return cicles
+        return ins.tstates
 
 
 class Worker:
@@ -168,26 +159,35 @@ class Worker:
         self.thread = None
 
     def loop(self):
-        global bufferlen, audiocount, buffaudio
+        global bufferlen, audiocount, buffaudio, audioword
+        ciclesAudio = 0
+        ciclesScan = 0
         cicles = 0
-        contascans = 0
+        y = 0
         while not self.stop_event.is_set():
 
-            cicles += 158
-            cicles = mach.step_instruction(cicles)
+            cicles = mach.step_instruction()
 
-            if (audiocount == bufferlen):
-                audiocount = 0
-            else:
-                buffaudio[audiocount] = audioword 
-                audiocount += 1
+            ciclesAudio -= cicles
+            ciclesScan -= cicles
 
-            contascans += 1
+            if (ciclesAudio <= 0):
+                ciclesAudio += 158
+                if (audiocount == bufferlen):
+                    audiocount = 0
+                else:
+                    buffaudio[audiocount] = audioword 
+                    audiocount += 1
 
-            if (contascans == 442):
-                contascans = 0
-                mach.interrupt()
-                clock.tick(50)
+            if (ciclesScan <= 0):
+                ciclesScan += 224
+                renderline(y)
+                y += 1
+                if (y == 312):
+                    y = 0
+                    mach.interrupt()
+                    clock.tick(50)
+
     
     def start(self):
         if self.thread is not None and self.thread.is_alive():
@@ -253,10 +253,6 @@ class Screen():
 
     def __init__(self):
         self.scale = self.DEFAULT_SCALE
-        # margin (unscaled)
-        self.margin = 40
-        # margin (scaled)
-        self.smargin = self.get_smargin()
         # dimensions of app window (all scaled: ui, border + internal zx)
         self.dimensions = self.width, self.height = self.update_dimensions()
         # dimensions of internal surface for scaled zx screen 
@@ -325,14 +321,8 @@ class Screen():
 
 
     def draw_screen(self, surface): 
-        # only if the border has changed, draw it
-        if self.get_hwbcolor() != colorTable[0][self.bcolor]:
-            self.draw_border(self.bcolor)
-        # draw the standard zx screen onto the scaled one 
-        self.screen.blit(pygame.transform.scale(surface, self.indimensions), (self.smargin, self.smargin + self.UI_HEIGHT)) 
-
-    def draw_border(self, color):
-            self.screen.fill(colorTable[0][color],rect=(0,self.UI_HEIGHT,self.width,self.height))
+        # draw the standard zx screen onto the scaled one
+        self.screen.blit(pygame.transform.scale(surface, self.indimensions), (0, self.UI_HEIGHT))
 
     def get_scale(self):
         return self.scale
@@ -343,15 +333,10 @@ class Screen():
     def scale_up(self):
         # increases scale between 1 and MAXSCALE
         self.scale = (self.scale % self.MAXSCALE) + 1
-        # update scaled margin and dimensions with new scale
-        self.smargin = self.get_smargin()
+        # update scaled dimensions with new scale
         self.dimensions = self.update_dimensions()
         self.indimensions = self.update_indimensions()
         self._init_screen()
-
-    def get_hwbcolor(self): # border color currently displayed
-        hwbcolor = '#{:02X}{:02X}{:02X}'.format(*self.screen.get_at((0,self.UI_HEIGHT))[:3])
-        return hwbcolor
     
     def get_bcolor(self) -> int:
         return self.bcolor
@@ -365,10 +350,10 @@ class Screen():
         return self.width, self.height
 
     def get_width(self) -> int:
-        return self.get_inwidth() + (self.get_smargin() * 2)
+        return self.get_inwidth()
     
     def get_height(self) -> int:
-        return self.get_inheight() + (self.get_smargin() * 2) + self.UI_HEIGHT
+        return self.get_inheight() + self.UI_HEIGHT
 
     def update_indimensions(self):
         self.inwidth = self.get_inwidth()
@@ -380,19 +365,11 @@ class Screen():
     
     def get_inheight(self) -> int:
         return ZXHEIGHT * self.scale
-    
-    def get_smargin(self) -> int:
-        return (self.margin * self.scale)
-
-    def set_margin(self, margin):
-        self.margin = margin
 
     def print_info(self):
         print("Scale is: ", self.scale)
         print("Screen dimensions: ", self.dimensions)
         print("ZX scaled dimensions: ", self.indimensions)
-        print("Margin is: ", self.margin)
-        print("Scaled margin is: ", self.smargin)
 
 # Funcions
 def quit_app():
@@ -613,51 +590,51 @@ def decodecolor(atribut):
         return (tinta, paper)
 
 
-def renderline(y, adr_pattern):
-    adr_attributs = 22528 + ((y >> 3) * 32)
-    x = 0
-    for col in range(32):
-        ink, paper = decodecolor(io.ZXmem[adr_attributs])
-        m = io.ZXmem[adr_pattern]
-        b = 0b10000000
-        while b:
-            if (m & b):
-                zx_screen.set_at((x, y), ink)
-            else:
-                zx_screen.set_at((x, y), paper)
-            x = x + 1
-            b = b >> 1
-        adr_pattern = adr_pattern + 1
-        adr_attributs = adr_attributs + 1
+def renderline(screenY):
+   # (376, 312)
+   global main_screen
+   if (screenY < 60) or (screenY > 251):
+      if screenCache[screenY][3] != main_screen.bcolor:
+         pygame.draw.line(zx_screen, colorTable[0][main_screen.bcolor], (0, screenY), (375, screenY))
+         screenCache[screenY][3] = main_screen.bcolor
+   else:
+      y = screenY - 60
+      adr_attributs = 22528 + ((y >> 3)*32)
+      # 000 tt zzz yyy xxxxx
+      adr_pattern = 16384 + (((y & 0b11000000) | ((y & 0b111) << 3) | (y & 0b111000) >> 3) << 5)
+      if screenCache[screenY][3] != main_screen.bcolor:
+         border = colorTable[0][main_screen.bcolor]
+         pygame.draw.line(zx_screen, border, (0, screenY), (59, screenY))
+         pygame.draw.line(zx_screen, border, (316, screenY), (375, screenY))
+         screenCache[screenY][3] = main_screen.bcolor
+      x = 60
+      for col in range(32):
+         ink, paper = decodecolor(io.ZXmem[adr_attributs])
+         m = io.ZXmem[adr_pattern]
+         cc = screenCache[adr_pattern & 0x1FFF]
+         if (cc[0] != m) or (cc[1] != ink) or (cc[2] != paper):
+            cc[0] = m
+            cc[1] = ink
+            cc[2] = paper
+            b = 0b10000000
+            while b:
+               if (m & b):
+                  zx_screen.set_at((x, screenY), ink)
+               else:
+                  zx_screen.set_at((x, screenY), paper)
+               x += 1
+               b >>= 1
+         else:
+            x += 8
+         adr_pattern += 1
+         adr_attributs += 1
+
 
 def renderscreenFull():
-    dir = 16384
-    for y in range(192):
-        # 000 tt zzz yyy xxxxx
-        offset = ((y & 0b11000000) | ((y & 0b111) << 3) | (y & 0b111000) >> 3) << 5
-        renderline(y, dir + offset)
-
-
-def renderscreenDiff():
-    for p in range(0, 768):
-        if tilechanged[p] == True:
-            ink, paper = decodecolor(io.ZXmem[22528 + p])
-            # 000 tt zzz yyy xxxxx
-            adr_pattern = 16384 + ((p & 0b0000001100000000) << 3) + (p & 0b11111111)
-            y = (p >> 5) * 8
-            for offset in range(0, 2048, 256):
-                m = io.ZXmem[adr_pattern + offset]
-                x = (p & 0b00011111) * 8
-                b = 0b10000000
-                while b:
-                    if (m & b):
-                        zx_screen.set_at((x, y), ink)
-                    else:
-                        zx_screen.set_at((x, y), paper)
-                    b >>= 1
-                    x += 1
-                y += 1
-            tilechanged[p] = False
+   for y in range(len(screenCache)):
+      cc = screenCache[y]
+      for n in range(len(cc)): cc[n] = -1
+   for y in range(312): renderline(y)
 
 
 # INICI
@@ -665,16 +642,20 @@ print("Platform is: ", platform.system())
 
 APPNAME = "Pythonspectrum"
 APPVERSION = "1.0"
-ZX_RES = ZXWIDTH, ZXHEIGHT = 256, 192
+ZX_RES = ZXWIDTH, ZXHEIGHT = 376, 312
 ROM = "jocs/spectrum.rom"
 
 #initialize audio
 bufferlen = 960
 buffaudio = numpy.zeros((bufferlen, 1), dtype = numpy.int16)
 audiocount = 0
+audioword = 0
 
 stream = sd.RawOutputStream(13500, channels=1, dtype=numpy.int16)
 stream.start()
+
+# Initialize screen cache
+for i in range(6144): screenCache.append([-1, -1, -1, -1]) # attr, ink, paper, border
 
 # Initialize Pygame and the clock
 clock = pygame.time.Clock()
@@ -698,16 +679,12 @@ worker = Worker()
 worker.start() 
 
 conta = 0
-audioword = 0
 
 # Main loop
 while True:
     conta += 1
     if (conta & 0b00011111) == 0:
         flashReversed = not flashReversed
-        for p in range(0, 768):
-            if (io.ZXmem[22528 + p] & 0b10000000):
-                tilechanged[p] = True
 
     for event in pygame.event.get():
         match event.type:
@@ -729,7 +706,7 @@ while True:
                 match event.ui_element:
                     case main_screen.b_load_game:
                         file_requester = pygame_gui.windows.UIFileDialog(
-                            pygame.Rect(main_screen.smargin, main_screen.smargin + main_screen.UI_HEIGHT, main_screen.inwidth, main_screen.inheight),
+                            pygame.Rect(0, main_screen.UI_HEIGHT, main_screen.inwidth, main_screen.inheight),
                             main_screen.ui_manager,
                             window_title='Open file...',
                             initial_file_path='./jocs/',
@@ -769,12 +746,10 @@ while True:
 
         main_screen.ui_manager.process_events(event)
 
-    renderscreenDiff()
     main_screen.draw_screen(zx_screen)
-   # time_delta = clock.tick(60)/1000.0
     main_screen.ui_manager.update(0)
     main_screen.ui_manager.draw_ui(main_screen.screen) # type: ignore
     stream.write(buffaudio)
-    pygame.display.update()
+    pygame.display.flip()
 
 quit_app()
