@@ -144,11 +144,7 @@ class Z80(io.Interruptable):
                 self.registers.PC = pc = (pc + 1) & 0xFFFF
             #print("{0:X} : {1} ".format(pc, ins.assembler(args)))
 
-        wrt = ins.execute(args)
-
-        for i in wrt:
-            adr = i[0]
-            if (adr > 16383): self._memory[adr] = i[1] # RAM normal
+        ins.execute(args)
 
         return ins.tstates
 
@@ -383,7 +379,7 @@ def readROM():
     dir = 0
     data = f.read(1)
     while data:
-        io.ZXmem[dir] = int.from_bytes(data, byteorder="big", signed=False)
+        io.ZXmem.writeROM(dir, int.from_bytes(data, byteorder="big", signed=False))
         dir = dir + 1
         data = f.read(1)
     f.close()

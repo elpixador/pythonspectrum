@@ -78,7 +78,7 @@ def readROM(aFilename):
    dir = 0
    data = f.read(1)
    while (data):
-      io.ZXmem[dir] = int.from_bytes(data, byteorder='big', signed=False)
+      io.ZXmem.writeROM(dir, int.from_bytes(data, byteorder='big', signed=False))
       dir = dir + 1
       data = f.read(1)
    f.close()
@@ -359,10 +359,7 @@ class Z80(io.Interruptable):
                 #print( "{0:X} : {1} ".format(pc, ins.assembler(args)))
                 #with open("sortida.txt", 'a') as file1: file1.write("{0:04X} : {1}\n".format(pc, ins.assembler(args)))
         
-            wrt = ins.execute(args)
-            for i in wrt:
-               adr = i[0]
-               if (adr > 16383): self._memory[adr] = i[1]
+            ins.execute(args)
 
             cicles -= ins.tstates
         return cicles

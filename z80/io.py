@@ -1,6 +1,16 @@
 ZXports = None # els poso aquí per a que siguin globals
-ZXmem = bytearray(65536)
 ZXRegisterR = 0
+
+class mem(object):
+    _mem = bytearray(65536)
+    def __getitem__(self, index):
+        return self._mem[index]
+    def __setitem__(self, index, value):
+        if (index & 0xC000): self._mem[index] = value
+    def writeROM(self, index, value):
+        self._mem[index] = value
+
+ZXmem = mem()
 
 class IO(object):
     _addresses = []
