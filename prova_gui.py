@@ -104,7 +104,7 @@ class portFE(io.IO):
         elif ((value & 0b00000000) == 0):
            audioword = 0
    
-        #gestio del color del borde
+        # gestió del color del borde
         main_screen.set_bcolor(value & 0b00000111) 
 
 class Z80(io.Interruptable):
