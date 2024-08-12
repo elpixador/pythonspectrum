@@ -230,7 +230,7 @@ class AboutWindow(pygame_gui.elements.UIWindow):
         text_contents = [(70, 30, (str(APPNAME) + " v" + str(APPVERSION))),
                         (20, 20, "Pixador (Z80 tweaking)"),
                         (20, 20, "Manel Calvet (programming, audio)"),
-                        (20, 20, "Joan Solà (UI, support)"),
+                        (20, 20, "Speedball (UI, support)"),
                         (20, 10, "Based on the Z80 emulator by"),
                         (20, 10, "Chris Burbridge"),
                         (20, 10, "https://github.com/cburbridge/z80")]
