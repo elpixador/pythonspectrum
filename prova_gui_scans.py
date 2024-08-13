@@ -152,7 +152,7 @@ class AboutWindow(pygame_gui.elements.UIWindow):
         )
         text_contents = [(70, 30, (str(APPNAME) + " v" + str(APPVERSION))),
                         (20, 20, "Pixador (Z80 tweaking)"),
-                        (20, 20, "Dionichi(programming, audio)"),
+                        (20, 20, "Dionichi (programming, audio)"),
                         (20, 20, "Speedball (UI, support)"),
                         (20, 10, "Based on the Z80 emulator by"),
                         (20, 10, "Chris Burbridge"),
@@ -215,7 +215,7 @@ class Screen():
         buttonWidth = 110
         buttonHeight = self.UI_HEIGHT-2
         gap = 3
-        ddm_options = ["Options","Scale (" + str(self.scale)+")","Freeze","Reset","Screenshot","About","Quit"]
+        ddm_options = ["Options","Scale (" + str(self.scale)+")","Freeze","Reset","Screenshot","Un/Mute","About","Quit"]
         button_info = [
             ("Load Game", "b_load_game", "UIButton"),
             (ddm_options[0], "b_dropdown", "UIDropdownMenu")
@@ -599,38 +599,39 @@ conta = 0
 cicles = 0
 audioword = 0
 pausa = False
+playAudio = True
 
 # Main loop
 while True:
 
   #print ('tick={}, fps={}'.format(clock.tick(60), clock.get_fps()))
-   conta = conta +1
+   if (not pausa):
+    conta = conta +1
 
-  #gestió del flash
-   if ((conta & 0b00011111) == 0):
-        flashReversed = not flashReversed
+    #gestió del flash
+    if ((conta & 0b00011111) == 0):
+            flashReversed = not flashReversed
 
-   for y in range(312):
-      if(pausa == False):
+    for y in range(312):
         cicles += 224
         #cicles += 248
         cicles = mach.step_instruction(cicles)
 
-      #buffer d'audio
-      if (audiocount == bufferlen):
-            audiocount = 0
-            stream.write(buffaudio) #comentar en cas d'anar lent
-         
-      else:
-            buffaudio[audiocount] = audioword 
-            audiocount += 1
-            
-      renderline(y)
-      
-      
-   pygame.display.flip()      
-   mach.interrupt()
-   main_screen.draw_screen(zx_screen)
+        if (playAudio):
+            #buffer d'audio
+            if (audiocount == bufferlen):
+                    audiocount = 0
+                    stream.write(buffaudio) #comentar en cas d'anar lent                
+            else:
+                    buffaudio[audiocount] = audioword 
+                    audiocount += 1
+                
+        renderline(y)
+        
+        
+    pygame.display.flip()      
+    mach.interrupt()
+    main_screen.draw_screen(zx_screen)
    main_screen.ui_manager.update(0)
    main_screen.ui_manager.draw_ui(main_screen.screen) # type: ignore
 
@@ -690,6 +691,8 @@ while True:
                             pausa = True
                         else:
                             pausa = False
+                    case "Un/Mute":
+                        playAudio = not playAudio
                     case "About":
                         about_window = AboutWindow(((10  * main_screen.get_scale(), 50 * main_screen.get_scale()), (280 * main_screen.get_scale(), 190 * main_screen.get_scale())),main_screen.ui_manager)
 
