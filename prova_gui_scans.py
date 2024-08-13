@@ -20,7 +20,6 @@ colorTable = ( # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour_
 
 flashReversed = False
 screenCache = []
-bordercolor = 0
 
 # classes
 class portFE(io.IO):
@@ -77,10 +76,9 @@ class portFE(io.IO):
 
         #audioword = 0x0000
         global audioword
-        global bordercolor
 
-        # gestió del color del borde
-        bordercolor = value & 0b00000111
+         # gestió del color del borde
+        main_screen.set_bcolor(value & 0b00000111) 
 
         # gestió del audio
         # new values out volume
@@ -349,7 +347,7 @@ def memFromPackedFile(aFile, aInici, aLongitud):
 
 
 def readSpectrumFile(fichero):   
-
+    
     if fichero:
       extensio = os.path.splitext(fichero)[1]
       nom = os.path.basename(fichero)
@@ -372,6 +370,7 @@ def readSpectrumFile(fichero):
             mach.registers.I = byteFromFile(f)
             mach.registers.R = byteFromFile(f) & 0x7F
             b = byteFromFile(f) # Bordercolor etc
+            bordercolor = (b & 0b00001110 ) > 1
             mach.registers.R = mach.registers.R | ((b & 0x01) << 7)
             isPacked = (b & 0b00100000) >> 5
             mach.registers.E = byteFromFile(f)
@@ -434,7 +433,7 @@ def readSpectrumFile(fichero):
             mach.registers.A = byteFromFile(f)
             mach.registers.SP = byteFromFile(f) | (byteFromFile(f) << 8)
             mach.registers.IM = byteFromFile(f) & 0x03
-            byteFromFile(f) # Bordercolor
+            bordercolor = byteFromFile(f) # Bordercolor
             memFromFile(f)
             f.close()
             mach.registers.PC = mach._memory[mach.registers.SP] | (mach._memory[mach.registers.SP+1]) << 8
@@ -466,7 +465,7 @@ def readSpectrumFile(fichero):
             mach.registers.PC = byteFromFile(f) | (byteFromFile(f) << 8)
             byteFromFile(f) # reserved
             byteFromFile(f) # reserved
-            byteFromFile(f) # Border color
+            bordercolor = byteFromFile(f) # Border color
             byteFromFile(f) # reserved
             b = byteFromFile(f) # status word low
             mach.registers.IFF = b & 1
@@ -478,6 +477,8 @@ def readSpectrumFile(fichero):
             byteFromFile(f) # status word high
             memFromFile(f)
             f.close()
+
+      main_screen.set_bcolor(bordercolor) 
 
 #tratamiento video ULA
 def decodecolor(atribut):
