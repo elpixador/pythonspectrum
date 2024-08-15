@@ -1,4 +1,5 @@
 import sys, os, threading, platform
+from turtle import width
 from typing import Optional
 
 import pygame
@@ -241,7 +242,127 @@ class AboutWindow(pygame_gui.elements.UIWindow):
             ypos += linspace
 
         self.set_blocking(True)
-        
+
+class EmulatorScreen:
+    def __init__(self):
+        self.zx_resolution = ZX_RES
+        # basic initializations
+        pygame.init()
+        # window title
+        pygame.display.set_caption(APPNAME)
+        # window icon
+        pygame.display.set_icon(pygame.image.load("./assets/window.png")) 
+        display_info = pygame.display.Info()
+        self.display_resolution = display_info.current_w, display_info.current_h
+        # define the height of the button bar for gui
+        self.bbar_height = 40  
+        self.init_screen(self.display_resolution)
+
+    def get_size(self):
+        return self.screen.get_size()
+
+    def get_screen(self):
+        return self.screen
+
+    def init_screen(self, resolution):
+        # calculates default scale for screen to fit nicely on current screen
+        self.scale = self.calculate_scale((self.zx_resolution[0], self.zx_resolution[1] + self.bbar_height), resolution)
+        # our app screen dimensions will be the scaled zx spectrum + the button bar
+        app_size = self.zx_resolution[0] * self.scale, (self.zx_resolution[1] * self.scale) + self.bbar_height
+        # initialize the root surface
+        self.screen = pygame.display.set_mode(app_size, pygame.RESIZABLE)
+        self.screen.fill(pygame.Color('#606861'))
+        # pintem una banda maca on posarem els botonets
+        banda = pygame.image.load("./assets/buttonbg.png").convert()
+        banda = pygame.transform.scale(banda, (self.screen.get_width(), self.bbar_height))
+        self.screen.blit(banda,(0,0))
+
+    # calculates max scale factor to fit a smaller surface into current screen
+    def calculate_scale(self, area_to_fit, big_area) -> int:
+        # gets the monitor resolution
+        max_scale_width = big_area[0] // area_to_fit[0]
+        max_scale_height = big_area[1] // area_to_fit[1]
+        return min(max_scale_width, max_scale_height)
+
+class UILayer(pygame_gui.UIManager):
+    def __init__(self, dimension):
+        super().__init__(dimension, "./assets/theme.json")
+        # dimensions of each button
+        button_size = button_width, button_height = 110, 30
+        # gap between buttons
+        gap = 3
+        # we are going to allow just 1 dropdown and as many buttons as you want
+        buttons = [
+            ("Load Game", "button"),
+            ("Options", "dropdown"),
+        ]
+        dropdown_list = [
+            "Options",  # sync this with dropdown button
+            "Scale ",
+            "Freeze",
+            "Reset",
+            "Screenshot",
+            "About",
+            "Quit",
+        ]
+        num_buttons = len(buttons)
+        button_row = []
+        button_area_length = (button_width * num_buttons) + (gap * (num_buttons - 1))
+        # initial position (x and y) for buttons on the button bar
+        position_y = 6
+        position_x = (pygame.display.Info().current_w - button_area_length) // 2
+        for i, (text, button_type) in enumerate(buttons):
+            position = (position_x + (i * (button_width + gap)), position_y)
+            if button_type == "button":
+                button_row.append(
+                    pygame_gui.elements.UIButton(
+                        relative_rect=pygame.Rect(position, button_size),
+                        text=text,
+                        manager=self,
+                    )
+                )
+            elif button_type == "dropdown":
+                button_row.append(
+                    pygame_gui.elements.UIDropDownMenu(
+                        relative_rect=pygame.Rect(position, button_size),
+                        options_list=dropdown_list,
+                        starting_option=dropdown_list[0],
+                        manager=self,
+                    )
+                )
+
+class Application:
+    def __init__(self):
+        self.zx_screen = EmulatorScreen()
+        # ui initialization
+        self.ui_manager = pygame_gui.UIManager((0,0))
+        self.init_gui()
+
+        # setting the clock and running flag
+        self.clock = pygame.time.Clock()
+        self.is_running = True
+
+    def init_gui(self):
+        self.ui_manager = UILayer(self.zx_screen.get_size())
+    
+    def init_screen(self, dimension):
+        self.zx_screen.init_screen(dimension)
+
+    def run(self):
+        while self.is_running:
+            time_delta = self.clock.tick(60) / 1000.0
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.is_running = False
+                if event.type == pygame.WINDOWRESIZED:
+                    self.init_screen((event.x,event.y))
+                    self.init_gui()
+                self.ui_manager.process_events(event)
+            self.ui_manager.update(time_delta)
+            self.ui_manager.draw_ui(self.zx_screen.get_screen())
+            pygame.display.update()
+
+
 class Screen():
     DEFAULT_SCALE = 3
     MAXSCALE = 5
@@ -639,9 +760,10 @@ print("Platform is: ", platform.system())
 APPNAME = "Pythonspectrum"
 APPVERSION = "1.0"
 ZX_RES = ZXWIDTH, ZXHEIGHT = 376, 312
+BORDER = 60
 ROM = "jocs/spectrum.rom"
 
-#initialize audio
+# initialize audio
 bufferlen = 960
 buffaudio = numpy.zeros((bufferlen, 1), dtype = numpy.int16)
 audiocount = 0
