@@ -88,7 +88,7 @@ class portFE(io.IO):
            audioword = 28445
         elif ((value & 0b00001000) == 8):
            audioword = 3113
-        else:
+        elif ((value & 0b00000000) == 0):
            audioword = 0
 
 
