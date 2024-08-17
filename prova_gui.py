@@ -1,5 +1,4 @@
 import sys, os, threading, platform
-from turtle import width
 from typing import Optional
 
 import pygame
@@ -8,6 +7,7 @@ import pygame_gui
 from pygame_gui.core.utility import create_resource_path
 
 import numpy
+import pygame_gui.elements.ui_window
 import sounddevice as sd
 
 ## Z80 CPU Emulator / https://github.com/cburbridge/z80
@@ -185,7 +185,6 @@ class Worker:
                     mach.interrupt()
                     clock.tick(50)
 
-    
     def start(self):
         if self.thread is not None and self.thread.is_alive():
             print("Worker is already running")
@@ -209,6 +208,102 @@ class Worker:
         else:
             self.start()
             print("Worker started")
+
+def center_me(unscaled_surface, unscaled_margins, scale):
+    margin_x, margin_y = unscaled_margins
+    surface_x, surface_y = unscaled_surface
+    scaled_margin_x = margin_x * scale
+    scaled_margin_y = margin_y * scale
+    scaled_surface_x = surface_x * scale
+    scaled_surface_y = surface_y * scale
+
+    return (
+        scaled_margin_x,
+        scaled_margin_y,
+        scaled_surface_x - 2 * scaled_margin_x,
+        scaled_surface_y - 2 * scaled_margin_y,
+    )
+
+def file_requester(zx_surface, manager):
+    gap = gap_x, gap_y = 40, 30
+    scale = zx_surface.get_scale()
+    dimensions=ZX_RES
+    pygame_gui.windows.UIFileDialog(
+        pygame.Rect(center_me(dimensions, gap, scale)),
+        manager,
+        window_title="Open file...",
+        initial_file_path="./jocs/",
+        allow_picking_directories=False,
+        allow_existing_files_only=True,
+        visible=1,
+        allowed_suffixes={""},
+    )
+
+def about_window(zx_surface, manager):
+    gap = gap_x, gap_y = 60, 60
+    scale = zx_surface.get_scale()
+    dimensions = ZX_RES
+    # we are going to need this later on for the labels
+    buffer = center_me(dimensions, gap, 1)
+    unscaled_about_x = buffer[2]-buffer[0]
+    unscaled_about_y = buffer[1]-buffer[3]
+    # centered about window
+    about = pygame_gui.elements.UIWindow(
+        pygame.Rect(center_me(dimensions, gap, scale)),
+        manager,
+        window_display_title="About"+APPNAME+"...",
+        resizable=False,
+        draggable=False
+    )
+    # let's place a background into the window
+    window_size = about.get_abs_rect()[2], about.get_abs_rect()[3]
+    image_background = pygame_gui.elements.UIImage(
+        relative_rect=pygame.Rect((0, 0), window_size),
+        image_surface=pygame.image.load("./assets/zxspectrum.png").convert_alpha(),
+        manager=manager,
+        container=about
+    )
+    # now lets type the text
+    margin_x, margin_y = 10, 15
+
+    text_contents = [
+        ("center", 0, (str(APPNAME) + " v" + str(APPVERSION))),
+        (20, 10, "Pixador (Z80 tweaking)"),
+        (20, 10, "Dionichi (programming, audio)"),
+        (20, 10, "Speedball (UI, support)"),
+        ("left", 20, "Based on the Z80 emulator by"),
+        ("left", 10, "Chris Burbridge"),
+        ("left", 10, "https://github.com/cburbridge/z80"),
+    ]
+
+    for justification, linspace, text in text_contents:
+        margin_y += linspace
+        # first we create the hidden label
+        # then we place it in the x axis according to the content
+        # and make it visible
+        label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((0,0), (-1, -1)),
+            text=text,
+            manager=manager,
+            container=about,
+            visible=0,
+        )
+        # TODO: center using this approach
+        new_pos = center_me((unscaled_about_x,unscaled_about_y),(margin_x,margin_y),scale)
+        if justification == "center":
+            text_size = label.get_abs_rect()[2], label.get_abs_rect()[3]
+            label.set_relative_position((((window_size[0] - text_size[0]) // 2), margin_y))
+        elif justification == "left":
+            new_pos = center_me((unscaled_about_x,unscaled_about_y),(margin_x,margin_y),scale) 
+            label.set_relative_position((new_pos[0],new_pos[1]))
+        else:
+            try:
+                new_pos = center_me((unscaled_about_x,unscaled_about_y),(margin_x,margin_y),scale) 
+                label.set_relative_position((new_pos[0] + int(justification), new_pos[1]))
+            except ValueError:
+                pass
+        label.visible = 1
+
 
 class AboutWindow(pygame_gui.elements.UIWindow):
     def __init__(self, rect, ui_manager):
@@ -255,15 +350,24 @@ class EmulatorScreen:
         display_info = pygame.display.Info()
         self.display_resolution = display_info.current_w, display_info.current_h
         # define the height of the button bar for gui
-        self.bbar_height = 40  
+        self.bbar_height = 30  
         self.init_screen(self.display_resolution)
-
+    
     def get_size(self):
         return self.screen.get_size()
+    
+    def get_width(self):
+        return self.screen.get_size()[0]
+
+    def get_height(self):
+        return self.screen.get_size()[1]
 
     def get_screen(self):
         return self.screen
-
+    
+    def get_scale(self):
+        return self.scale
+    
     def init_screen(self, resolution):
         # calculates default scale for screen to fit nicely on current screen
         self.scale = self.calculate_scale((self.zx_resolution[0], self.zx_resolution[1] + self.bbar_height), resolution)
@@ -288,7 +392,7 @@ class UILayer(pygame_gui.UIManager):
     def __init__(self, dimension):
         super().__init__(dimension, "./assets/theme.json")
         # dimensions of each button
-        button_size = button_width, button_height = 110, 30
+        button_size = button_width, button_height = 200, 30
         # gap between buttons
         gap = 3
         # we are going to allow just 1 dropdown and as many buttons as you want
@@ -298,7 +402,6 @@ class UILayer(pygame_gui.UIManager):
         ]
         dropdown_list = [
             "Options",  # sync this with dropdown button
-            "Scale ",
             "Freeze",
             "Reset",
             "Screenshot",
@@ -333,6 +436,8 @@ class UILayer(pygame_gui.UIManager):
 
 class Application:
     def __init__(self):
+        print("Platform is:", platform.system()) # DEBUG_INFO
+
         self.zx_screen = EmulatorScreen()
         # ui initialization
         self.ui_manager = pygame_gui.UIManager((0,0))
@@ -344,7 +449,7 @@ class Application:
 
     def init_gui(self):
         self.ui_manager = UILayer(self.zx_screen.get_size())
-    
+
     def init_screen(self, dimension):
         self.zx_screen.init_screen(dimension)
 
@@ -352,16 +457,72 @@ class Application:
         while self.is_running:
             time_delta = self.clock.tick(60) / 1000.0
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.is_running = False
-                if event.type == pygame.WINDOWRESIZED:
-                    self.init_screen((event.x,event.y))
-                    self.init_gui()
+                self.check_events(event)
                 self.ui_manager.process_events(event)
             self.ui_manager.update(time_delta)
             self.ui_manager.draw_ui(self.zx_screen.get_screen())
             pygame.display.update()
+        self.quit_app()
 
+    def quit_app(self):
+        print("Emulator quitting...")
+        # worker.stop()
+        pygame.quit()
+        sys.exit()
+
+    def check_events(self, event):
+        match event.type:
+            case pygame.KEYDOWN:
+                mach._iomap.keypress(event.scancode)
+
+            case pygame.KEYUP:
+                mach._iomap.keyrelease(event.scancode)
+
+            case pygame.QUIT:
+                self.is_running = False
+
+            case pygame.WINDOWRESIZED:
+                self.init_screen((event.x,event.y))
+                self.init_gui()
+
+            case pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
+                readSpectrumFile(create_resource_path(event.text))
+
+            case pygame_gui.UI_BUTTON_PRESSED:
+                match event.ui_element.text.split()[0]: # Match first word only 
+                    case "Load":
+                        file_requester(self.zx_screen, self.ui_manager)
+
+            case pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+                print(event.text) # to be removed
+                match event.text.split()[0]: # matching first word only
+                    case "Scale":
+                        main_screen.scale_up()
+                        main_screen.init_gui()
+                    case "Quit":
+                        # we trigger an exit event
+                        pygame.event.post(pygame.event.Event(pygame.QUIT))
+                    case "Reset":
+                        worker.stop()
+                        mach.registers.reset()
+                        worker.start()
+                        """case "Screenshot":
+                            area = main_screen.dimensions[0], main_screen.dimensions[1] - main_screen.UI_HEIGHT
+                            screenshot = pygame.Surface(area)
+                            screenshot.blit(main_screen.screen,(0,-main_screen.UI_HEIGHT))
+                            pygame.image.save(screenshot,"screenshot.png")"""
+                    case "Freeze":
+                        worker.toggle()
+                    case "About":
+                        about_window(self.zx_screen, self.ui_manager)
+
+                """main_screen.b_dropdown.rebuild()
+                # Reset to the first option
+                dropdown_menu.selected_option = dropdown_options[0]
+                dropdown_menu.selected_option_text = dropdown_options[0]
+                dropdown_menu.set_item_list(dropdown_options)  # Update the dropdown menu"""
+
+        # main_screen.ui_manager.process_events(event)
 
 class Screen():
     DEFAULT_SCALE = 3
@@ -435,7 +596,6 @@ class Screen():
                     manager=self.ui_manager,
                 )
             setattr(self, attr, button)
-
 
     def draw_screen(self, surface): 
         # draw the standard zx screen onto the scaled one
@@ -755,13 +915,14 @@ def renderscreenFull():
 
 
 # INICI
-print("Platform is: ", platform.system())
 
 APPNAME = "Pythonspectrum"
 APPVERSION = "1.0"
 ZX_RES = ZXWIDTH, ZXHEIGHT = 376, 312
-BORDER = 60
 ROM = "jocs/spectrum.rom"
+
+"""app=Application()
+app.run()"""
 
 # initialize audio
 bufferlen = 960

@@ -46,7 +46,7 @@
 "font":
     {
         "name": "Monocraft",
-        "size": "10",
+        "size": "14",
         "bold": "0",
         "italic": "0",
         "regular_path": "./Monocraft-no-ligatures.ttf"
