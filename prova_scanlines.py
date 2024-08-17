@@ -73,12 +73,22 @@ class portFE(io.IO):
 
 #tratamiento ficheros
 def readROM(aFilename):
-   
    f = open(aFilename, mode="rb")
    dir = 0
    data = f.read(1)
    while (data):
       io.ZXmem.writeROM(dir, int.from_bytes(data, byteorder='big', signed=False))
+      dir = dir + 1
+      data = f.read(1)
+   f.close()
+   print("ROM cargada")
+
+def readROM1(aFilename):
+   f = open(aFilename, mode="rb")
+   dir = 0
+   data = f.read(1)
+   while (data):
+      io.ZXmem.writeROM1(dir, int.from_bytes(data, byteorder='big', signed=False))
       dir = dir + 1
       data = f.read(1)
    f.close()
@@ -282,9 +292,9 @@ def renderline(screenY):
          screenCache[screenY][3] = bordercolor
    else:
       y = screenY - 60
-      adr_attributs = 22528 + ((y >> 3)*32)
+      adr_attributs = 6144 + ((y >> 3)*32)
       # 000 tt zzz yyy xxxxx
-      adr_pattern = 16384 + (((y & 0b11000000) | ((y & 0b111) << 3) | (y & 0b111000) >> 3) << 5)
+      adr_pattern = (((y & 0b11000000) | ((y & 0b111) << 3) | (y & 0b111000) >> 3) << 5)
       if screenCache[screenY][3] != bordercolor:
          border = colorTable[0][bordercolor]
          pygame.draw.line(pantalla, border, (0, screenY), (59, screenY))
@@ -292,9 +302,9 @@ def renderline(screenY):
          screenCache[screenY][3] = bordercolor
       x = 60
       for col in range(32):
-         ink, paper = decodecolor(io.ZXmem[adr_attributs])
-         m = io.ZXmem[adr_pattern]
-         cc = screenCache[adr_pattern & 0x1FFF]
+         ink, paper = decodecolor(io.ZXmem.screen(adr_attributs))
+         m = io.ZXmem.screen(adr_pattern)
+         cc = screenCache[adr_pattern]
          if (cc[0] != m) or (cc[1] != ink) or (cc[2] != paper):
             cc[0] = m
             cc[1] = ink
@@ -327,6 +337,7 @@ class Z80(io.Interruptable):
         self._memory = io.ZXmem
         io.ZXports = io.IOMap()
         io.ZXports.addDevice(portFE())
+        io.ZXports.addDevice(io.portFD())
         self._iomap = io.ZXports
         self._interrupted = False
         
@@ -368,7 +379,8 @@ class Z80(io.Interruptable):
 
 mach = Z80()
 
-readROM("jocs/spectrum.rom") #carreguem la rom sempre
+readROM("roms/plus2-0.rom") #carreguem la rom sempre
+readROM1("roms/plus2-1.rom") #carreguem la rom sempre
 readSpectrumFile() #funció que càrrega qualsevol snapshoot de spectrum... en cas de no fer-ho arrenca la ROM per defecte
 
 for i in range(6144): screenCache.append([-1, -1, -1, -1]) # attr, ink, paper, border

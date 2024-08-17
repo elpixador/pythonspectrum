@@ -58,7 +58,7 @@ class Registers(dict):
         self['HALT']=False #
         self['IFF']=False  # Interrupt flip flop
         self['IFF2']=False  # NM Interrupt flip flop
-        self['IM']=False   # Iterrupt mode
+        self['IM']=1 #False   # Interrupt mode
 
     def __setattr__(self, attr, val):
         if attr in self:
