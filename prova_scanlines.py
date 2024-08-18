@@ -144,6 +144,7 @@ def readSpectrumFile():
    fichero = filedialog.askopenfile(title='Obrir arxiu', filetypes=(('Arxius .SNA','*.SNA'), ('Arxius .SP','*.SP'), ('Arxius .Z80','*.Z80'), ('Tots','*')))
    
    if (fichero):
+      io.ZXmem.reset()
       print("el fichero es "+str(fichero.name))
       nom, extensio = os.path.splitext(fichero.name)
 
@@ -403,6 +404,7 @@ class Z80(io.Interruptable):
 
 mach = Z80()
 
+#readROM("./jocs/spectrum.rom") #carreguem la rom sempre
 readROM("roms/plus2-0.rom") #carreguem la rom sempre
 readROM1("roms/plus2-1.rom") #carreguem la rom sempre
 readSpectrumFile() #funció que càrrega qualsevol snapshoot de spectrum... en cas de no fer-ho arrenca la ROM per defecte

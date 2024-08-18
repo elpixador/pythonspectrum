@@ -49,30 +49,41 @@ class portFE(io.IO):
     }
 
     _pygameKeys = { # scancode
-        30: [0xF7, 0x01], 31: [0xF7, 0x02], 32: [0xF7, 0x04], 33: [0xF7, 0x08], 34: [0xF7, 0x10], # 12345
-        35: [0xEF, 0x10], 36: [0xEF, 0x08], 37: [0xEF, 0x04], 38: [0xEF, 0x02], 39: [0xEF, 0x01], # 67890
-        20: [0xFB, 0x01], 26: [0xFB, 0x02], 8: [0xFB, 0x04], 21: [0xFB, 0x08], 23: [0xFB, 0x10], # qwert
-        28: [0xDF, 0x10], 24: [0xDF, 0x08], 12: [0xDF, 0x04], 18: [0xDF, 0x02], 19: [0xDF, 0x01], # yuiop
-        4: [0xFD, 0x01], 22: [0xFD, 0x02], 7: [0xFD, 0x04], 9: [0xFD, 0x08], 10: [0xFD, 0x10], # asdfg
-        11: [0xBF, 0x10], 13: [0xBF, 0x08], 14: [0xBF, 0x04], 15: [0xBF, 0x02], # hjkl
-        29: [0xFE, 0x02], 27: [0xFE, 0x04], 6: [0xFE, 0x08], 25: [0xFE, 0x10], # zxcv
-        5: [0x7F, 0x10], 17: [0x7F, 0x08], 16: [0x7F, 0x04],  # bnm
-        40: [0xBF, 0x01], # Enter
-        44: [0x7F, 0x01], # Space
-        226: [0x7F, 0x02], # Sym (Alt)
-        225: [0xFE, 0x01], 229: [0xFE, 0x01], # Shift (LShift, RShift)
-        80: [0xEF, 0x10], 79: [0xEF, 0x08], 81: [0xEF, 0x04], 82: [0xEF, 0x02], 228: [0xEF, 0x01] # Sinclair Interface II (Cursors, RCtrl)
+        30: [[0xF7, 0x01]], 31: [[0xF7, 0x02]], 32: [[0xF7, 0x04]], 33: [[0xF7, 0x08]], 34: [[0xF7, 0x10]], # 12345
+        35: [[0xEF, 0x10]], 36: [[0xEF, 0x08]], 37: [[0xEF, 0x04]], 38: [[0xEF, 0x02]], 39: [[0xEF, 0x01]], # 67890
+        20: [[0xFB, 0x01]], 26: [[0xFB, 0x02]], 8: [[0xFB, 0x04]], 21: [[0xFB, 0x08]], 23: [[0xFB, 0x10]], # qwert
+        28: [[0xDF, 0x10]], 24: [[0xDF, 0x08]], 12: [[0xDF, 0x04]], 18: [[0xDF, 0x02]], 19: [[0xDF, 0x01]], # yuiop
+        4: [[0xFD, 0x01]], 22: [[0xFD, 0x02]], 7: [[0xFD, 0x04]], 9: [[0xFD, 0x08]], 10: [[0xFD, 0x10]], # asdfg
+        11: [[0xBF, 0x10]], 13: [[0xBF, 0x08]], 14: [[0xBF, 0x04]], 15: [[0xBF, 0x02]], # hjkl
+        29: [[0xFE, 0x02]], 27: [[0xFE, 0x04]], 6: [[0xFE, 0x08]], 25: [[0xFE, 0x10]], # zxcv
+        5: [[0x7F, 0x10]], 17: [[0x7F, 0x08]], 16: [[0x7F, 0x04]],  # bnm
+        40: [[0xBF, 0x01]], # Enter
+        44: [[0x7F, 0x01]], # Space
+        226: [[0x7F, 0x02]], 224: [[0x7F, 0x02]], 228: [[0x7F, 0x02]],# Sym (Alt, LCtrl, RCtrl)
+        225: [[0xFE, 0x01]], 229: [[0xFE, 0x01]], # Shift (LShift, RShift)
+        # Tecles combinades
+        42: [[0xFE, 0x01], [0xEF, 0x01]], # Backspace
+        80: [[0xFE, 0x01], [0xF7, 0x10]], # Cursor LEFT
+        81: [[0xFE, 0x01], [0xEF, 0x10]], # Cursor DOWN
+        82: [[0xFE, 0x01], [0xEF, 0x08]], # Cursor UP
+        79: [[0xFE, 0x01], [0xEF, 0x04]], # Cursor RIGHT
+        54: [[0x7F, 0x02], [0x7F, 0x08]], # Coma
+        55: [[0x7F, 0x02], [0x7F, 0x04]], # Punt
+        # Sinclair Interface II
+        92: [[0xEF, 0x10]], 94: [[0xEF, 0x08]], 90: [[0xEF, 0x04]], 93: [[0xEF, 0x04]], 96: [[0xEF, 0x02]], 98: [[0xEF, 0x01]] # (teclat numèric)
     }
 
     def keypress(self, scancode):
         if scancode in self._pygameKeys:
             k = self._pygameKeys[scancode]
-            self._keysSpectrum[k[0]] = self._keysSpectrum[k[0]] & (k[1]^0xFF)
+            for par in k:
+                self._keysSpectrum[par[0]] = self._keysSpectrum[par[0]] & (par[1]^0xFF)
 
     def keyrelease(self, scancode):
         if scancode in self._pygameKeys:
             k = self._pygameKeys[scancode]
-            self._keysSpectrum[k[0]] = self._keysSpectrum[k[0]] | k[1]
+            for par in k:
+                self._keysSpectrum[par[0]] = self._keysSpectrum[par[0]] | par[1]
 
     def read(self, address):
         adr = address >> 8
@@ -102,7 +113,7 @@ class portFE(io.IO):
            audioword = 28445
         elif ((value & 0b00001000) == 8):
            audioword = 3113
-        elif ((value & 0b00000000) == 0):
+        else:
            audioword = 0
    
         # gestió del color del borde
@@ -115,6 +126,7 @@ class Z80(io.Interruptable):
         self._memory = io.ZXmem
         io.ZXports = io.IOMap()
         io.ZXports.addDevice(portFE())
+        io.ZXports.addDevice(io.portFD())
         self._iomap = io.ZXports
         self._interrupted = False
 
@@ -130,15 +142,13 @@ class Z80(io.Interruptable):
             if self.registers.HALT:
                 self.registers.HALT = False
                 self.registers.PC = util.inc16(pc)
-            if self.registers.IM == 1:
-                # print ("!!! Interrupt Mode 1 !!!")
-                ins, args = self.instructions << 0xFF
-            elif self.registers.IM == 2:
-                # print ("!!! Interrupt Mode 2 !!!")
+            if self.registers.IM == 2:
                 imadr = (self.registers.I << 8) | 0xFF
                 ins, args = self.instructions << 0xCD
                 ins, args = self.instructions << self._memory[imadr & 0xFFFF]
                 ins, args = self.instructions << self._memory[(imadr + 1) & 0xFFFF]
+            else:
+                ins, args = self.instructions << 0xFF
         else:
             while not ins:
                 ins, args = self.instructions << self._memory[pc]
@@ -505,6 +515,7 @@ class Application:
                     case "Reset":
                         worker.stop()
                         mach.registers.reset()
+                        io.ZXmem.reset()
                         worker.start()
                         """case "Screenshot":
                             area = main_screen.dimensions[0], main_screen.dimensions[1] - main_screen.UI_HEIGHT
@@ -655,16 +666,27 @@ def quit_app():
     pygame.quit()
     sys.exit()
 
-def readROM():
-    f = open(ROM, mode="rb")
-    dir = 0
-    data = f.read(1)
-    while data:
-        io.ZXmem.writeROM(dir, int.from_bytes(data, byteorder="big", signed=False))
-        dir = dir + 1
-        data = f.read(1)
-    f.close()
-    print("ROM cargada")
+def readROM(aFilename):
+   f = open(aFilename, mode="rb")
+   dir = 0
+   data = f.read(1)
+   while (data):
+      io.ZXmem.writeROM(dir, int.from_bytes(data, byteorder='big', signed=False))
+      dir = dir + 1
+      data = f.read(1)
+   f.close()
+   print("ROM cargada")
+
+def readROM1(aFilename):
+   f = open(aFilename, mode="rb")
+   dir = 0
+   data = f.read(1)
+   while (data):
+      io.ZXmem.writeROM1(dir, int.from_bytes(data, byteorder='big', signed=False))
+      dir = dir + 1
+      data = f.read(1)
+   f.close()
+   print("ROM cargada")
 
 def byteFromFile(aFile):
     data = aFile.read(1)
@@ -704,6 +726,7 @@ def readSpectrumFile(fichero):
     global nborder
     if fichero:
         worker.stop()
+        io.ZXmem.reset()
 
         extensio = os.path.splitext(fichero)[1]
         nom = os.path.basename(fichero)
@@ -753,18 +776,31 @@ def readSpectrumFile(fichero):
             if (mach.registers.PC == 0): # Versions 2 i 3 del format
                b = byteFromFile(f) | (byteFromFile(f) << 8)
                mach.registers.PC = byteFromFile(f) | (byteFromFile(f) << 8)
-               print('Hardware mode: '+str(byteFromFile(f)))
-               f.read(b-3) # Skip b-3 bytes
-               while (sz > f.tell()):
-                  lon = byteFromFile(f) | (byteFromFile(f) << 8) # length of compressed data
-                  b = byteFromFile(f) # page
-                  if (b == 4): memFromPackedFile(f, 0x8000, lon)
-                  elif (b == 5): memFromPackedFile(f, 0xC000, lon)
-                  elif (b == 8): memFromPackedFile(f, 0x4000, lon)
-                  else: 
-                     print('Skipping page: '+str(b))
-                     memFromPackedFile(f, 0xFFFFF, lon)
+               hwm = byteFromFile(f)
+               print('Hardware mode: '+str(hwm))
+               if (hwm < 3):
+                  io.ZXmem.set48mode()
+                  f.read(b-3) # Skip b-3 bytes
+                  while (sz > f.tell()):
+                     lon = byteFromFile(f) | (byteFromFile(f) << 8) # length of compressed data
+                     b = byteFromFile(f) # page
+                     if (b == 4): memFromPackedFile(f, 0x8000, lon)
+                     elif (b == 5): memFromPackedFile(f, 0xC000, lon)
+                     elif (b == 8): memFromPackedFile(f, 0x4000, lon)
+                     else: 
+                        print('Skipping page: '+str(b))
+                        memFromPackedFile(f, 0xFFFFF, lon)
+               else:
+                  map = byteFromFile(f)
+                  f.read(b-4) # Skip b-4 bytes
+                  while (sz > f.tell()):
+                     lon = byteFromFile(f) | (byteFromFile(f) << 8) # length of compressed data
+                     b = byteFromFile(f) # page
+                     io.ZXmem.changeMap(b-3)
+                     memFromPackedFile(f, 0xC000, lon)
+                  io.ZXmem.changeMap(map)
             else: # Versió 1 del format
+               io.ZXmem.set48mode()
                if (isPacked): memFromPackedFile(f, 16384, 49152)
                else: memFromFile(f)
             f.close()
@@ -772,6 +808,7 @@ def readSpectrumFile(fichero):
         elif (
             extensio.upper() == ".SNA"
         ):  # https://worldofspectrum.org/faq/reference/formats.htm
+            io.ZXmem.set48mode()
             mach.registers.I = byteFromFile(f)
             mach.registers.L_ = byteFromFile(f)
             mach.registers.H_ = byteFromFile(f)
@@ -810,6 +847,7 @@ def readSpectrumFile(fichero):
         elif (
             extensio.upper() == ".SP"
         ):  # https://rk.nvg.ntnu.no/sinclair/faq/fileform.html#SP
+            io.ZXmem.set48mode()
             f.read(6)  # signatura i cacones
             mach.registers.C = byteFromFile(f)
             mach.registers.B = byteFromFile(f)
@@ -876,9 +914,9 @@ def renderline(screenY):
          screenCache[screenY][3] = main_screen.bcolor
    else:
       y = screenY - 60
-      adr_attributs = 22528 + ((y >> 3)*32)
+      adr_attributs = 6144 + ((y >> 3)*32)
       # 000 tt zzz yyy xxxxx
-      adr_pattern = 16384 + (((y & 0b11000000) | ((y & 0b111) << 3) | (y & 0b111000) >> 3) << 5)
+      adr_pattern = (((y & 0b11000000) | ((y & 0b111) << 3) | (y & 0b111000) >> 3) << 5)
       if screenCache[screenY][3] != main_screen.bcolor:
          border = colorTable[0][main_screen.bcolor]
          pygame.draw.line(zx_screen, border, (0, screenY), (59, screenY))
@@ -886,9 +924,9 @@ def renderline(screenY):
          screenCache[screenY][3] = main_screen.bcolor
       x = 60
       for col in range(32):
-         ink, paper = decodecolor(io.ZXmem[adr_attributs])
-         m = io.ZXmem[adr_pattern]
-         cc = screenCache[adr_pattern & 0x1FFF]
+         ink, paper = decodecolor(io.ZXmem.screen(adr_attributs))
+         m = io.ZXmem.screen(adr_pattern)
+         cc = screenCache[adr_pattern]
          if (cc[0] != m) or (cc[1] != ink) or (cc[2] != paper):
             cc[0] = m
             cc[1] = ink
@@ -919,7 +957,6 @@ def renderscreenFull():
 APPNAME = "Pythonspectrum"
 APPVERSION = "1.0"
 ZX_RES = ZXWIDTH, ZXHEIGHT = 376, 312
-ROM = "jocs/spectrum.rom"
 
 """app=Application()
 app.run()"""
@@ -950,7 +987,9 @@ zx_screen = pygame.Surface(ZX_RES)
 
 clock.tick(50)
 
-readROM()
+#readROM("./jocs/spectrum.rom")
+readROM("roms/plus2-0.rom")
+readROM1("roms/plus2-1.rom")
 renderscreenFull()
 
 # Start worker thread
@@ -1006,6 +1045,7 @@ while True:
                     case "Reset":
                         worker.stop()
                         mach.registers.reset()
+                        io.ZXmem.reset()
                         worker.start()
                     case "Screenshot":
                         area = main_screen.dimensions[0], main_screen.dimensions[1] - main_screen.UI_HEIGHT
