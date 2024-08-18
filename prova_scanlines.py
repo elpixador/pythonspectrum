@@ -175,23 +175,37 @@ def readSpectrumFile():
             if (mach.registers.PC == 0): # Versions 2 i 3 del format
                b = byteFromFile(f) | (byteFromFile(f) << 8)
                mach.registers.PC = byteFromFile(f) | (byteFromFile(f) << 8)
-               print('Hardware mode: '+str(byteFromFile(f)))
-               f.read(b-3) # Skip b-3 bytes
-               while (sz > f.tell()):
-                  lon = byteFromFile(f) | (byteFromFile(f) << 8) # length of compressed data
-                  b = byteFromFile(f) # page
-                  if (b == 4): memFromPackedFile(f, 0x8000, lon)
-                  elif (b == 5): memFromPackedFile(f, 0xC000, lon)
-                  elif (b == 8): memFromPackedFile(f, 0x4000, lon)
-                  else: 
-                     print('Skipping page: '+str(b))
-                     memFromPackedFile(f, 0xFFFFF, lon)
+               hwm = byteFromFile(f)
+               print('Hardware mode: '+str(hwm))
+               if (hwm < 3):
+                  io.ZXmem.set48mode()
+                  f.read(b-3) # Skip b-3 bytes
+                  while (sz > f.tell()):
+                     lon = byteFromFile(f) | (byteFromFile(f) << 8) # length of compressed data
+                     b = byteFromFile(f) # page
+                     if (b == 4): memFromPackedFile(f, 0x8000, lon)
+                     elif (b == 5): memFromPackedFile(f, 0xC000, lon)
+                     elif (b == 8): memFromPackedFile(f, 0x4000, lon)
+                     else: 
+                        print('Skipping page: '+str(b))
+                        memFromPackedFile(f, 0xFFFFF, lon)
+               else:
+                  map = byteFromFile(f)
+                  f.read(b-4) # Skip b-4 bytes
+                  while (sz > f.tell()):
+                     lon = byteFromFile(f) | (byteFromFile(f) << 8) # length of compressed data
+                     b = byteFromFile(f) # page
+                     io.ZXmem.changeMap(b-3)
+                     memFromPackedFile(f, 0xC000, lon)
+                  io.ZXmem.changeMap(map)
             else: # Versió 1 del format
+               io.ZXmem.set48mode()
                if (isPacked): memFromPackedFile(f, 16384, 49152)
                else: memFromFile(f)
             f.close()
 
-      elif extensio.upper() == '.SNA': # https://worldofspectrum.org/faq/reference/formats.htm            
+      elif extensio.upper() == '.SNA': # https://worldofspectrum.org/faq/reference/formats.htm
+            io.ZXmem.set48mode()
             mach.registers.I = byteFromFile(f)
             mach.registers.L_ = byteFromFile(f)
             mach.registers.H_ = byteFromFile(f)
@@ -224,6 +238,7 @@ def readSpectrumFile():
             mach.registers.SP += 2
             
       elif extensio.upper() == '.SP': # https://rk.nvg.ntnu.no/sinclair/faq/fileform.html#SP
+            io.ZXmem.set48mode()
             f.read(6) # signatura i cacones
             mach.registers.C = byteFromFile(f)
             mach.registers.B = byteFromFile(f)
@@ -354,15 +369,13 @@ class Z80(io.Interruptable):
                 if self.registers.HALT:
                    self.registers.HALT = False
                    self.registers.PC = util.inc16(pc)
-                if self.registers.IM == 1:
-                    #print ("!!! Interrupt Mode 1 !!!")
-                    ins, args = self.instructions << 0xFF
-                elif self.registers.IM == 2:
-                    #print ("!!! Interrupt Mode 2 !!!")
+                if self.registers.IM == 2:
                     imadr = (self.registers.I << 8) | 0xFF
                     ins, args = self.instructions << 0xCD
                     ins, args = self.instructions << self._memory[imadr & 0xFFFF]
                     ins, args = self.instructions << self._memory[(imadr+1) & 0xFFFF]
+                else:
+                    ins, args = self.instructions << 0xFF
             else:
                 while not ins:
                     ins, args = self.instructions << self._memory[pc]

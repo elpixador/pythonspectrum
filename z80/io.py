@@ -40,10 +40,13 @@ class mem(object):
         return self._screen[index]
 
     def writeROM0(self, index, value):
-        self._rom0[index & 0x3FFFF] = value
+        self._rom0[index & 0x3FFF] = value
 
     def writeROM1(self, index, value):
-        self._rom1[index & 0x3FFFF] = value
+        self._rom1[index & 0x3FFF] = value
+    
+    def writeBank(self, bank, index, value):
+        self._bank[bank & 0x07][index & 0x3FFF] = value
 
     def writeROM(self, index, value):
         self.writeROM0(index, value)
@@ -61,6 +64,9 @@ class mem(object):
         else: self._memread[0] = self._rom0
 
         if (map & 0x20): self._locked = True
+    
+    def set48mode(self):
+        self.changeMap(0b00110000)
 
 
 ZXmem = mem()
