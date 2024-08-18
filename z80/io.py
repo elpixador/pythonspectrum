@@ -87,12 +87,20 @@ class Interruptable(object):
 class portFD(IO):
    _addresses = [0xFD]
 
+   _audioreg = [0]*16
+   _audiosel = 0
+
    def read(self, address):
-      return 0x00
+      if address == 0xFFFD: return self._audioreg[self._audiosel]
+      else: return 0xFF
 
    def write(self, address, value):
-      if (address == 0x7FFD):
+      if (address == 0x7FFD): # memory mapper
         ZXmem.changeMap(value)
+      elif (address == 0xFFFD): # select audio register
+          self._audiosel = value & 0x0F
+      elif (address == 0xBFFD): # write to selected audio register
+          self._audioreg[self._audiosel] = value
 
     
 class IOMap(object):
