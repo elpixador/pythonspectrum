@@ -1669,11 +1669,10 @@ class InstructionSet():
     @instruction([([0xed, 0xa2], ( )) ] ,
                  2, "INI", 16)
     def ini(instruction, registers):
-        address = registers.C | (registers.B << 8)
-        res = io.ZXports.read(address)
         hl = registers.HL
         registers.B = dec8(registers.B)
         registers.HL = inc16(hl)
+        res = io.ZXports.read(registers.BC)
         ZXFlags.N = 1
         ZXFlags.Z = registers.B == 0
         io.ZXmem[hl] = res
@@ -1681,12 +1680,11 @@ class InstructionSet():
         
     @instruction([([0xed, 0xb2], ( )) ] ,
                  2, "INIR", 21)
-    def inir(instruction, registers):
-        address = registers.C | (registers.B << 8)
-        res = io.ZXports.read(address)
+    def inir(instruction, registers):        
         hl = registers.HL
         registers.B = dec8(registers.B)
         registers.HL = inc16(hl)
+        res = io.ZXports.read(registers.BC)
         ZXFlags.N = 1
         ZXFlags.Z = registers.B == 0
         if registers.B != 0:
@@ -1699,11 +1697,10 @@ class InstructionSet():
     @instruction([([0xed, 0xaa], ( )) ] ,
                  2, "IND", 16)
     def ind(instruction, registers):
-        address = registers.C | (registers.B << 8)
-        res = io.ZXports.read(address)
         hl = registers.HL
         registers.B = dec8(registers.B)
         registers.HL = dec16(hl)
+        res = io.ZXports.read(registers.BC)
         ZXFlags.N = 1
         ZXFlags.Z = registers.B == 0
         io.ZXmem[hl] = res
@@ -1712,11 +1709,10 @@ class InstructionSet():
     @instruction([([0xed, 0xba], ( )) ] ,
                  2, "INDR", 21)
     def indr(instruction, registers):
-        address = registers.C | (registers.B << 8)
-        res = io.ZXports.read(address)
         hl = registers.HL
         registers.B = dec8(registers.B)
         registers.HL = dec16(hl)
+        res = io.ZXports.read(registers.BC)
         ZXFlags.N = 1
         ZXFlags.Z = registers.B == 0
         if registers.B != 0:
@@ -1768,7 +1764,7 @@ class InstructionSet():
         else:
             instruction.tstates = 16
             
-        io.ZXports.write(registers.BC, val)
+        io.ZXports.write(address, val)
         
     @instruction([([0xed, 0xab], ( )) ] ,
                  2, "OUTD", 16)
@@ -1779,7 +1775,7 @@ class InstructionSet():
         registers.HL = dec16(registers.HL)
         ZXFlags.N = 1
         ZXFlags.Z = registers.B == 0
-        io.ZXports.write(registers.BC, val)
+        io.ZXports.write(address, val)
         
         
     @instruction([([0xed, 0xbb], ( )) ] ,
@@ -1797,4 +1793,4 @@ class InstructionSet():
         else:
             instruction.tstates = 16
             
-        io.ZXports.write(registers.BC, val)
+        io.ZXports.write(address, val)
