@@ -1,8 +1,19 @@
 import pygame
+# PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
 import pygame_gui
 from .constants import ZX_RES, APPNAME, APPVERSION
 
-class EmulatorScreen:
+
+class ZXScreen(pygame.Surface):
+    def __init__(self, x,y):
+        super().__init__((x,y))
+        self.screenCache = []
+        for i in range(6144):
+            self.screenCache.append([-1, -1, -1, -1])  # attr, ink, paper, border
+        self.flashReversed = False  
+
+
+class AppScreen:
     def __init__(self):
         self.zx_resolution = ZX_RES
         # basic initializations
@@ -173,7 +184,7 @@ class UILayer(pygame_gui.UIManager):
     def __init__(self, dimension):
         super().__init__(dimension, "./assets/theme.json")
         # dimensions of each button
-        button_size = button_width, button_height = 200, 30
+        button_size = button_width, button_height = 120, 30
         # gap between buttons
         gap = 3
         # we are going to allow just 1 dropdown and as many buttons as you want
