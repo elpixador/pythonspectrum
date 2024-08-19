@@ -149,26 +149,32 @@ class IOMap(object):
         ay = self.address[0xFD]
         audioEnable = ay._audioreg[7]
 
-        if (self.audioAPeriod <= 0):
-            self.audioAToca = not self.audioAToca
-            self.audioAPeriod = ((ay._audioreg[1] << 8) | ay._audioreg[0])
-        else: self.audioAPeriod -= self.audioDecPeriod
-        if self.audioAToca and not(audioEnable & 0x01): audioAWord = -625 * ay._audioreg[8]
-        else: audioAWord = 0
+        if (audioEnable & 0x01): audioAWord = 0
+        else:
+            if (self.audioAPeriod <= 0):
+                self.audioAToca = not self.audioAToca
+                self.audioAPeriod = ((ay._audioreg[1] << 8) | ay._audioreg[0])
+            else: self.audioAPeriod -= self.audioDecPeriod
+            if self.audioAToca: audioAWord = -625 * ay._audioreg[8]
+            else: audioAWord = 0
 
-        if (self.audioBPeriod <= 0):
-            self.audioBToca = not self.audioBToca
-            self.audioBPeriod = ((ay._audioreg[3] << 8) | ay._audioreg[2])
-        else: self.audioBPeriod -= self.audioDecPeriod
-        if self.audioBToca and not(audioEnable & 0x02): audioBWord = -625 * ay._audioreg[9]
-        else: audioBWord = 0
+        if (audioEnable & 0x02): audioBWord = 0
+        else:
+            if (self.audioBPeriod <= 0):
+                self.audioBToca = not self.audioBToca
+                self.audioBPeriod = ((ay._audioreg[3] << 8) | ay._audioreg[2])
+            else: self.audioBPeriod -= self.audioDecPeriod
+            if self.audioBToca: audioBWord = -625 * ay._audioreg[9]
+            else: audioBWord = 0
 
-        if (self.audioCPeriod <= 0):
-            self.audioCToca = not self.audioCToca
-            self.audioCPeriod = ((ay._audioreg[5] << 8) | ay._audioreg[4])
-        else: self.audioCPeriod -= self.audioDecPeriod
-        if self.audioCToca and not(audioEnable & 0x04): audioCWord = -625 * ay._audioreg[10]
-        else: audioCWord = 0
+        if (audioEnable & 0x04): audioCWord = 0
+        else:
+            if (self.audioCPeriod <= 0):
+                self.audioCToca = not self.audioCToca
+                self.audioCPeriod = ((ay._audioreg[5] << 8) | ay._audioreg[4])
+            else: self.audioCPeriod -= self.audioDecPeriod
+            if self.audioCToca: audioCWord = -625 * ay._audioreg[10]
+            else: audioCWord = 0
 
         return audioAWord + audioBWord + audioCWord
 
