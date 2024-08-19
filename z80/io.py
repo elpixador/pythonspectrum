@@ -155,7 +155,7 @@ class IOMap(object):
                 self.audioAToca = not self.audioAToca
                 self.audioAPeriod = ((ay._audioreg[1] << 8) | ay._audioreg[0])
             else: self.audioAPeriod -= self.audioDecPeriod
-            if self.audioAToca: audioAWord = -625 * ay._audioreg[8]
+            if self.audioAToca: audioAWord = -625 * (ay._audioreg[8] & 0x0F)
             else: audioAWord = 0
 
         if (audioEnable & 0x02): audioBWord = 0
@@ -164,7 +164,7 @@ class IOMap(object):
                 self.audioBToca = not self.audioBToca
                 self.audioBPeriod = ((ay._audioreg[3] << 8) | ay._audioreg[2])
             else: self.audioBPeriod -= self.audioDecPeriod
-            if self.audioBToca: audioBWord = -625 * ay._audioreg[9]
+            if self.audioBToca: audioBWord = -625 * (ay._audioreg[9] & 0x0F)
             else: audioBWord = 0
 
         if (audioEnable & 0x04): audioCWord = 0
@@ -173,7 +173,7 @@ class IOMap(object):
                 self.audioCToca = not self.audioCToca
                 self.audioCPeriod = ((ay._audioreg[5] << 8) | ay._audioreg[4])
             else: self.audioCPeriod -= self.audioDecPeriod
-            if self.audioCToca: audioCWord = -625 * ay._audioreg[10]
+            if self.audioCToca: audioCWord = -625 * (ay._audioreg[10] & 0x0F)
             else: audioCWord = 0
 
         return audioAWord + audioBWord + audioCWord
