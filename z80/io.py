@@ -85,28 +85,30 @@ class Interruptable(object):
    
 
 class portFD(IO):
-   _addresses = [0xFD]
+    _addresses = [0xFD]
 
-   _audioreg = [0]*16
-   _audiosel = 0
+    _audioreg = [0]*16
+    _audiosel = 0
 
-   def read(self, address):
-      if address == 0xFFFD: return self._audioreg[self._audiosel]
-      else: return 0xFF
+    def read(self, address):
+        if address == 0xFFFD: return self._audioreg[self._audiosel]
+        else: return 0xFF
 
-   def write(self, address, value):
-      if (address == 0x7FFD): # memory mapper
-        ZXmem.changeMap(value)
-      elif (address == 0xFFFD): # select audio register
-          self._audiosel = value & 0x0F
-      elif (address == 0xBFFD): # write to selected audio register
-          self._audioreg[self._audiosel] = value
-
+    def write(self, address, value):
+        if (address == 0x7FFD): # memory mapper
+            ZXmem.changeMap(value)
+        elif (address == 0xFFFD): # select audio register
+            self._audiosel = value & 0x0F
+        elif (address == 0xBFFD): # write to selected audio register
+            self._audioreg[self._audiosel] = value
+    
     
 class IOMap(object):
     def __init__(self):
         self.address = {}
+        self.initAY() # prova, no hauria d'estar aqui
         pass
+
     def addDevice(self, dev):
         assert isinstance(dev, IO)
         for i in dev._addresses:
@@ -132,3 +134,41 @@ class IOMap(object):
 
     def keyrelease(self, scancode):
         self.address[0xFE].keyrelease(scancode)
+
+    # funcions de prova, no haurien d'estar aquí
+    def initAY(self):
+        self.audioAPeriod = 0
+        self.audioAToca = False
+        self.audioBPeriod = 0
+        self.audioBToca = False
+        self.audioCPeriod = 0
+        self.audioCToca = False
+        self.audioDecPeriod = 20 # Ajustament de la freqüència
+
+    def calcAY(self):
+        ay = self.address[0xFD]
+        audioEnable = ay._audioreg[7]
+
+        if (self.audioAPeriod <= 0):
+            self.audioAToca = not self.audioAToca
+            self.audioAPeriod = ((ay._audioreg[1] << 8) | ay._audioreg[0])
+        else: self.audioAPeriod -= self.audioDecPeriod
+        if self.audioAToca and not(audioEnable & 0x01): audioAWord = -625 * ay._audioreg[8]
+        else: audioAWord = 0
+
+        if (self.audioBPeriod <= 0):
+            self.audioBToca = not self.audioBToca
+            self.audioBPeriod = ((ay._audioreg[3] << 8) | ay._audioreg[2])
+        else: self.audioBPeriod -= self.audioDecPeriod
+        if self.audioBToca and not(audioEnable & 0x02): audioBWord = -625 * ay._audioreg[9]
+        else: audioBWord = 0
+
+        if (self.audioCPeriod <= 0):
+            self.audioCToca = not self.audioCToca
+            self.audioCPeriod = ((ay._audioreg[5] << 8) | ay._audioreg[4])
+        else: self.audioCPeriod -= self.audioDecPeriod
+        if self.audioCToca and not(audioEnable & 0x04): audioCWord = -625 * ay._audioreg[10]
+        else: audioCWord = 0
+
+        return audioAWord + audioBWord + audioCWord
+

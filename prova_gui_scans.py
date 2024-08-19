@@ -661,7 +661,7 @@ while True:
                     audiocount = 0
                     stream.write(buffaudio) #comentar en cas d'anar lent                
             else:
-                    buffaudio[audiocount] = audioword 
+                    buffaudio[audiocount] = audioword + io.ZXports.calcAY()
                     audiocount += 1
                 
         renderline(y)
