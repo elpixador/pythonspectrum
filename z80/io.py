@@ -96,6 +96,7 @@ class ay38912(object):
     def reset(self):
         for n in range(len(self._audioreg)):
             self._audioreg[n] = 0
+        self._audioreg[7] = 0x3F
         self._audioregs01 = 0
         self._audioregs23 = 0
         self._audioregs45 = 0
@@ -138,7 +139,7 @@ class ay38912(object):
             if (self._audioNPeriod <= 0):                
                 if (noise): self._audioNRand ^= 0x24000 # https://github.com/openMSX/openMSX/blob/master/src/sound/AY8910.cc
                 self._audioNRand >>= 1
-                self._audioNPeriod = self._audioreg[6]
+                self._audioNPeriod = self._audioreg[6] & 0x1F
             else: self._audioNPeriod -= self._audioDecPeriod
 
         if (audioEnable & 0x09) != 0x09: # canal A
