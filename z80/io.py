@@ -68,8 +68,91 @@ class mem(object):
     def set48mode(self):
         self.changeMap(0b00110000)
 
+class ay38912(object):
+    _audioreg = [0]*16
+    _audiosel = 0
+
+    _audioregs01 = 0
+    _audioregs23 = 0
+    _audioregs45 = 0
+    _audiovolums = (
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+        (0, -625*1, -625*2, -625*3, -625*4, -625*5, -625*6, -625*7, -625*8, -625*9, -625*10, -625*11, -625*12, -625*13, -625*14, -625*15)
+    )
+
+    _audioAPeriod = 0
+    _audioAToca = 0
+    _audioBPeriod = 0
+    _audioBToca = 0
+    _audioCPeriod = 0
+    _audioCToca = 0
+    _audioDecPeriod = 240500 // 12025 # Ajustament de la freqüència
+
+    def __init__(self):
+        self.reset()
+    
+    def reset(self):
+        for n in range(len(self._audioreg)):
+            self._audioreg[n] = 0
+        self._audioregs01 = 0
+        self._audioregs23 = 0
+        self._audioregs45 = 0
+        self._audioAPeriod = 0
+        self._audioAToca = 0
+        self._audioBPeriod = 0
+        self._audioBToca = 0
+        self._audioCPeriod = 0
+        self._audioCToca = 0
+
+    def setaudiofreq(self, freq):
+        self._audioDecPeriod = 240500 // freq
+
+    def regselect(self, reg):
+        self._audiosel = reg & 0x0F
+
+    def regread(self):
+        return self._audioreg[self._audiosel]
+    
+    def regwrite(self, value):
+        self._audioreg[self._audiosel] = value
+        match self._audiosel:
+            case 0 | 1:
+                self._audioregs01 = self._audioreg[0] | ((self._audioreg[1] & 0x0F) << 8)
+            case 2 | 3:
+                self._audioregs23 = self._audioreg[2] | ((self._audioreg[3] & 0x0F) << 8)
+            case 4 | 5:
+                self._audioregs45 = self._audioreg[4] | ((self._audioreg[5] & 0x0F) << 8)
+
+    def calc(self):
+        audioEnable = self._audioreg[7]
+        res = 0
+
+        if not(audioEnable & 0x01):
+            if (self._audioAPeriod <= 0):
+                self._audioAToca = (self._audioAToca + 1) % 2
+                self._audioAPeriod = self._audioregs01
+            else: self._audioAPeriod -= self._audioDecPeriod
+            res += self._audiovolums[self._audioAToca][self._audioreg[8] & 0x0F]
+
+        if not(audioEnable & 0x02):
+            if (self._audioBPeriod <= 0):
+                self._audioBToca = (self._audioBToca + 1) % 2
+                self._audioBPeriod = self._audioregs23
+            else: self._audioBPeriod -= self._audioDecPeriod
+            res += self._audiovolums[self._audioBToca][self._audioreg[9] & 0x0F]
+
+        if not(audioEnable & 0x04):
+            if (self._audioCPeriod <= 0):
+                self._audioCToca = (self._audioCToca + 1) % 2
+                self._audioCPeriod = self._audioregs45
+            else: self._audioCPeriod -= self._audioDecPeriod
+            res += self._audiovolums[self._audioCToca][self._audioreg[10] & 0x0F]
+
+        return res
+
 
 ZXmem = mem()
+ZXay = ay38912()
 
 class IO(object):
     _addresses = []
@@ -87,26 +170,22 @@ class Interruptable(object):
 class portFD(IO):
     _addresses = [0xFD]
 
-    _audioreg = [0]*16
-    _audiosel = 0
-
     def read(self, address):
-        if address == 0xFFFD: return self._audioreg[self._audiosel]
+        if address == 0xFFFD: return ZXay.regread()
         else: return 0xFF
 
     def write(self, address, value):
         if (address == 0x7FFD): # memory mapper
             ZXmem.changeMap(value)
         elif (address == 0xFFFD): # select audio register
-            self._audiosel = value & 0x0F
+            ZXay.regselect(value)
         elif (address == 0xBFFD): # write to selected audio register
-            self._audioreg[self._audiosel] = value
+            ZXay.regwrite(value)
     
     
 class IOMap(object):
     def __init__(self):
         self.address = {}
-        self.initAY() # prova, no hauria d'estar aqui
         pass
 
     def addDevice(self, dev):
@@ -134,47 +213,3 @@ class IOMap(object):
 
     def keyrelease(self, scancode):
         self.address[0xFE].keyrelease(scancode)
-
-    # funcions de prova, no haurien d'estar aquí
-    def initAY(self):
-        self.audioAPeriod = 0
-        self.audioAToca = False
-        self.audioBPeriod = 0
-        self.audioBToca = False
-        self.audioCPeriod = 0
-        self.audioCToca = False
-        self.audioDecPeriod = 20 # Ajustament de la freqüència
-
-    def calcAY(self):
-        ay = self.address[0xFD]
-        audioEnable = ay._audioreg[7]
-
-        if (audioEnable & 0x01): audioAWord = 0
-        else:
-            if (self.audioAPeriod <= 0):
-                self.audioAToca = not self.audioAToca
-                self.audioAPeriod = ((ay._audioreg[1] << 8) | ay._audioreg[0])
-            else: self.audioAPeriod -= self.audioDecPeriod
-            if self.audioAToca: audioAWord = -625 * (ay._audioreg[8] & 0x0F)
-            else: audioAWord = 0
-
-        if (audioEnable & 0x02): audioBWord = 0
-        else:
-            if (self.audioBPeriod <= 0):
-                self.audioBToca = not self.audioBToca
-                self.audioBPeriod = ((ay._audioreg[3] << 8) | ay._audioreg[2])
-            else: self.audioBPeriod -= self.audioDecPeriod
-            if self.audioBToca: audioBWord = -625 * (ay._audioreg[9] & 0x0F)
-            else: audioBWord = 0
-
-        if (audioEnable & 0x04): audioCWord = 0
-        else:
-            if (self.audioCPeriod <= 0):
-                self.audioCToca = not self.audioCToca
-                self.audioCPeriod = ((ay._audioreg[5] << 8) | ay._audioreg[4])
-            else: self.audioCPeriod -= self.audioDecPeriod
-            if self.audioCToca: audioCWord = -625 * (ay._audioreg[10] & 0x0F)
-            else: audioCWord = 0
-
-        return audioAWord + audioBWord + audioCWord
-
