@@ -374,6 +374,7 @@ def readSpectrumFile(fichero):
       nom = os.path.basename(fichero)
       print("file to load is: " + nom)
       io.ZXmem.reset()
+      io.ZXay.reset()
       f = open(fichero, mode="rb")
 
       #no se puede utilizar match sino es python >3.10
@@ -723,6 +724,7 @@ while True:
                     case "Reset":
                         mach.registers.reset()
                         io.ZXmem.reset()
+                        io.ZXay.reset()
                     case "Screenshot":
                         screen_shoot()
                     case "Freeze":
