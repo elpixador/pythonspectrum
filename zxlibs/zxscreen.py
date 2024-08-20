@@ -10,6 +10,7 @@ class Spectrum:
         self.audio = AudioInterface()  # this is where the audio stuff will happen
         self.IO = None  # TODO:
         self.cpu = None  # TODO:
+        self.is_running = True
 
     def get_surface(self):
         return self.screen
@@ -31,6 +32,8 @@ class ZXScreen(pygame.Surface):
 class AppScreen:
     def __init__(self):
         # basic initializations
+        self.is_running = True
+        self.is_frozen = False
         pygame.init()
         # window title
         pygame.display.set_caption(APPNAME)
@@ -67,13 +70,8 @@ class AppScreen:
         app_size = (ZX_RES[0] * self.scale, (ZX_RES[1] * self.scale) + self.bbar_height)
         # initialize the root surface
         self.screen = pygame.display.set_mode(app_size, pygame.RESIZABLE)
-        self.screen.fill(pygame.Color("#606861"))
-        # pintem una banda maca on posarem els botonets
-        banda = pygame.image.load("./assets/buttonbg.png").convert()
-        banda = pygame.transform.scale(
-            banda, (self.screen.get_width(), self.bbar_height)
-        )
-        self.screen.blit(banda, (0, 0))
+        self.fill_screen()
+
 
     # calculates max scale factor to fit a smaller surface into current screen
     def calculate_scale(self, area_to_fit, big_area) -> int:
@@ -88,7 +86,69 @@ class AppScreen:
             pygame.transform.scale(surface,self.get_size()), (0, self.bbar_height)
         )
 
+    # fills the app screen with a background
+    def fill_screen(self):
+        self.screen.fill(pygame.Color("#606861"))
+        # pintem una banda maca on posarem els botonets
+        banda = pygame.image.load("./assets/buttonbg.png").convert()
+        banda = pygame.transform.scale(
+            banda, (self.screen.get_width(), self.bbar_height)
+        )
+        self.screen.blit(banda, (0, 0))
 
+
+class UILayer(pygame_gui.UIManager):
+    def __init__(self, dimension):
+        super().__init__(dimension, "./assets/theme.json")
+        self.reset_ui()
+
+    def reset_ui(self):
+        # dimensions of each button
+        button_size = button_width, button_height = 120, 30
+        # gap between buttons
+        gap = 3
+        # we are going to allow just 1 dropdown and as many buttons as you want
+        buttons = [
+            ("Load Game", "button"),
+            ("Options", "dropdown"),
+        ]
+        self.dropdown_list = [
+            "Options",  # sync this with dropdown button
+            "Freeze",
+            "Reset",
+            "Screenshot",
+            "About",
+            "Quit",
+        ]
+        num_buttons = len(buttons)
+        button_row = []
+        button_area_length = (button_width * num_buttons) + (gap * (num_buttons - 1))
+        # initial position (x and y) for buttons on the button bar
+        position_y = 6
+        position_x = (pygame.display.Info().current_w - button_area_length) // 2
+        for i, (text, button_type) in enumerate(buttons):
+            position = (position_x + (i * (button_width + gap)), position_y)
+            if button_type == "button":
+                button_row.append(
+                    pygame_gui.elements.UIButton(
+                        relative_rect=pygame.Rect(position, button_size),
+                        text=text,
+                        manager=self,
+                    )
+                )
+            elif button_type == "dropdown":
+                button_row.append(
+                    pygame_gui.elements.UIDropDownMenu(
+                        relative_rect=pygame.Rect(position, button_size),
+                        options_list=self.dropdown_list,
+                        starting_option=self.dropdown_list[0],
+                        manager=self,
+                    )
+                )
+                self.dropdown = button_row[-1]
+
+
+# FUNCTIONS
 def center_me(unscaled_surface, unscaled_margins, scale):
     margin_x, margin_y = unscaled_margins
     surface_x, surface_y = unscaled_surface
@@ -105,9 +165,9 @@ def center_me(unscaled_surface, unscaled_margins, scale):
     )
 
 
-def file_requester(zx_surface, manager):
+def file_requester(app, manager):
     gap = gap_x, gap_y = 40, 30
-    scale = zx_surface.get_scale()
+    scale = app.get_scale()
     dimensions = ZX_RES
     pygame_gui.windows.UIFileDialog(
         pygame.Rect(center_me(dimensions, gap, scale)),
@@ -195,50 +255,3 @@ def about_window(zx_surface, manager):
             except ValueError:
                 pass
         label.visible = 1
-
-
-class UILayer(pygame_gui.UIManager):
-    def __init__(self, dimension):
-        super().__init__(dimension, "./assets/theme.json")
-        # dimensions of each button
-        button_size = button_width, button_height = 120, 30
-        # gap between buttons
-        gap = 3
-        # we are going to allow just 1 dropdown and as many buttons as you want
-        buttons = [
-            ("Load Game", "button"),
-            ("Options", "dropdown"),
-        ]
-        dropdown_list = [
-            "Options",  # sync this with dropdown button
-            "Freeze",
-            "Reset",
-            "Screenshot",
-            "About",
-            "Quit",
-        ]
-        num_buttons = len(buttons)
-        button_row = []
-        button_area_length = (button_width * num_buttons) + (gap * (num_buttons - 1))
-        # initial position (x and y) for buttons on the button bar
-        position_y = 6
-        position_x = (pygame.display.Info().current_w - button_area_length) // 2
-        for i, (text, button_type) in enumerate(buttons):
-            position = (position_x + (i * (button_width + gap)), position_y)
-            if button_type == "button":
-                button_row.append(
-                    pygame_gui.elements.UIButton(
-                        relative_rect=pygame.Rect(position, button_size),
-                        text=text,
-                        manager=self,
-                    )
-                )
-            elif button_type == "dropdown":
-                button_row.append(
-                    pygame_gui.elements.UIDropDownMenu(
-                        relative_rect=pygame.Rect(position, button_size),
-                        options_list=dropdown_list,
-                        starting_option=dropdown_list[0],
-                        manager=self,
-                    )
-                )
