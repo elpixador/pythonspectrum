@@ -2,11 +2,26 @@ import pygame
 # PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
 import pygame_gui
 from .constants import ZX_RES, APPNAME, APPVERSION
+from .sound import AudioInterface
+
+class Spectrum:
+    def __init__(self):
+        self.screen = ZXScreen((ZX_RES[0], ZX_RES[1]))
+        self.audio = AudioInterface()  # this is where the audio stuff will happen
+        self.IO = None  # TODO:
+        self.cpu = None  # TODO:
+
+    def get_surface(self):
+        return self.screen
 
 
 class ZXScreen(pygame.Surface):
-    def __init__(self, x,y):
-        super().__init__((x,y))
+    def __new__(cls, size):
+        # creates a new pygame.Surface object
+        return super(ZXScreen, cls).__new__(cls, size)
+    
+    def __init__(self,size):
+        super().__init__(size)
         self.screenCache = []
         for i in range(6144):
             self.screenCache.append([-1, -1, -1, -1])  # attr, ink, paper, border
@@ -15,7 +30,6 @@ class ZXScreen(pygame.Surface):
 
 class AppScreen:
     def __init__(self):
-        self.zx_resolution = ZX_RES
         # basic initializations
         pygame.init()
         # window title
@@ -25,8 +39,9 @@ class AppScreen:
         display_info = pygame.display.Info()
         self.display_resolution = display_info.current_w, display_info.current_h
         # define the height of the button bar for gui
-        self.bbar_height = 30
+        self.bbar_height = 40
         self.init_screen(self.display_resolution)
+        self.ui = UILayer(self.display_resolution)
 
     def get_size(self):
         return self.screen.get_size()
@@ -46,14 +61,10 @@ class AppScreen:
     def init_screen(self, resolution):
         # calculates default scale for screen to fit nicely on current screen
         self.scale = self.calculate_scale(
-            (self.zx_resolution[0], self.zx_resolution[1] + self.bbar_height),
-            resolution,
+            (ZX_RES[0], ZX_RES[1] + self.bbar_height), resolution
         )
         # our app screen dimensions will be the scaled zx spectrum + the button bar
-        app_size = (
-            self.zx_resolution[0] * self.scale,
-            (self.zx_resolution[1] * self.scale) + self.bbar_height,
-        )
+        app_size = (ZX_RES[0] * self.scale, (ZX_RES[1] * self.scale) + self.bbar_height)
         # initialize the root surface
         self.screen = pygame.display.set_mode(app_size, pygame.RESIZABLE)
         self.screen.fill(pygame.Color("#606861"))
@@ -70,6 +81,12 @@ class AppScreen:
         max_scale_width = big_area[0] // area_to_fit[0]
         max_scale_height = big_area[1] // area_to_fit[1]
         return min(max_scale_width, max_scale_height)
+
+    # draws the spectrum screen onto the app screen
+    def draw_screen(self, surface):
+        self.screen.blit(
+            pygame.transform.scale(surface,self.get_size()), (0, self.bbar_height)
+        )
 
 
 def center_me(unscaled_surface, unscaled_margins, scale):
