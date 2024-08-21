@@ -321,7 +321,7 @@ def renderline(screenY):
          pygame.draw.line(pantalla, border, (316, screenY), (375, screenY))
          screenCache[screenY][2] = bordercolor
       x = 60
-      for col in range(32):
+      for _ in range(32):
          attr = unFlash[flashReversed][io.ZXmem.screen(adr_attributs)]
          m = io.ZXmem.screen(adr_pattern)
          cc = screenCache[adr_pattern]
