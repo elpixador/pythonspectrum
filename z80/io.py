@@ -129,12 +129,12 @@ class ay38912(object):
                 self._audioregs45 = self._audioreg[4] | ((self._audioreg[5] & 0x0F) << 8)
 
     def calc(self):
-        audioEnable = self._audioreg[7]
-        if (audioEnable & 0x3F) == 0x3F: return 0
+        audioEnable = self._audioreg[7] ^ 0xFF # Lògica inversa
+        if not(audioEnable & 0x3F): return 0
         
         res = 0
 
-        if (audioEnable & 0x38) != 0x38: # soroll
+        if (audioEnable & 0x38): # soroll
             noise = self._audioNRand & 0x01
             if (self._audioNPeriod <= 0):                
                 if (noise): self._audioNRand ^= 0x24000 # https://github.com/openMSX/openMSX/blob/master/src/sound/AY8910.cc
@@ -142,37 +142,37 @@ class ay38912(object):
                 self._audioNPeriod = self._audioreg[6] & 0x1F
             else: self._audioNPeriod -= self._audioDecPeriod
 
-        if (audioEnable & 0x09) != 0x09: # canal A
-            if (audioEnable & 0x01): tone = 0
-            else:
+        if (audioEnable & 0x09): # canal A
+            if (audioEnable & 0x01):
                 if (self._audioAPeriod <= 0):
                     self._audioAToca = (self._audioAToca + 1) % 2
                     self._audioAPeriod = self._audioregs01
                 else: self._audioAPeriod -= self._audioDecPeriod
                 tone = self._audioAToca
-            if not(audioEnable & 0x08): tone |= noise
+            else: tone = 0
+            if (audioEnable & 0x08): tone |= noise
             res += self._audiovolums[tone][self._audioreg[8] & 0x0F]
 
-        if (audioEnable & 0x12) != 0x12: # canal B
-            if (audioEnable & 0x02): tone = 0
-            else:
+        if (audioEnable & 0x12): # canal B
+            if (audioEnable & 0x02):
                 if (self._audioBPeriod <= 0):
                     self._audioBToca = (self._audioBToca + 1) % 2
                     self._audioBPeriod = self._audioregs23
                 else: self._audioBPeriod -= self._audioDecPeriod
                 tone = self._audioBToca
-            if not(audioEnable & 0x10): tone |= noise
+            else: tone = 0
+            if (audioEnable & 0x10): tone |= noise
             res += self._audiovolums[tone][self._audioreg[9] & 0x0F]
 
-        if (audioEnable & 0x24) != 0x24: # canal C
-            if (audioEnable & 0x04): tone = 0
-            else:
+        if (audioEnable & 0x24): # canal C
+            if (audioEnable & 0x04):
                 if (self._audioCPeriod <= 0):
                     self._audioCToca = (self._audioCToca + 1) % 2
                     self._audioCPeriod = self._audioregs45
                 else: self._audioCPeriod -= self._audioDecPeriod
                 tone = self._audioCToca
-            if not(audioEnable & 0x20): tone |= noise
+            else: tone = 0
+            if (audioEnable & 0x20): tone |= noise
             res += self._audiovolums[tone][self._audioreg[10] & 0x0F]
 
         return res
