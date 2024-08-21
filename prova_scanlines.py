@@ -22,6 +22,7 @@ colorTable = ( # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour_
 flashReversed = False
 pantalla = None
 screenCache = []
+unFlash = [[], []]
 bordercolor = 0
 
 class portFE(io.IO):
@@ -299,43 +300,35 @@ def readSpectrumFile():
 #tratamiento video ULA
 def decodecolor(atribut):
    # http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/screen-memory-layout
-   bright = (atribut & 0b01000000)>>6
-   flash = (atribut & 0b10000000)>>7
-
-   tinta = colorTable[bright][atribut & 0b00000111]
-   paper = colorTable[bright][(atribut & 0b00111000)>>3]
-   
-   if (flash & flashReversed):
-      return (paper, tinta)
-   else:
-      return (tinta, paper)
+   coltbl = colorTable[(atribut & 0b01000000)>>6]
+   return (coltbl[atribut & 0b00000111], coltbl[(atribut & 0b00111000)>>3])
 
 def renderline(screenY):
    # (376, 312)
    global bordercolor
    if (screenY < 60) or (screenY > 251):
-      if screenCache[screenY][3] != bordercolor:
+      if screenCache[screenY][2] != bordercolor:
          pygame.draw.line(pantalla, colorTable[0][bordercolor], (0, screenY), (375, screenY))
-         screenCache[screenY][3] = bordercolor
+         screenCache[screenY][2] = bordercolor
    else:
       y = screenY - 60
       adr_attributs = 6144 + ((y >> 3)*32)
       # 000 tt zzz yyy xxxxx
       adr_pattern = (((y & 0b11000000) | ((y & 0b111) << 3) | (y & 0b111000) >> 3) << 5)
-      if screenCache[screenY][3] != bordercolor:
+      if screenCache[screenY][2] != bordercolor:
          border = colorTable[0][bordercolor]
          pygame.draw.line(pantalla, border, (0, screenY), (59, screenY))
          pygame.draw.line(pantalla, border, (316, screenY), (375, screenY))
-         screenCache[screenY][3] = bordercolor
+         screenCache[screenY][2] = bordercolor
       x = 60
       for col in range(32):
-         ink, paper = decodecolor(io.ZXmem.screen(adr_attributs))
+         attr = unFlash[flashReversed][io.ZXmem.screen(adr_attributs)]
          m = io.ZXmem.screen(adr_pattern)
          cc = screenCache[adr_pattern]
-         if (cc[0] != m) or (cc[1] != ink) or (cc[2] != paper):
+         if (cc[0] != m) or (cc[1] != attr):
             cc[0] = m
-            cc[1] = ink
-            cc[2] = paper
+            cc[1] = attr
+            ink, paper = decodecolor(attr)
             b = 0b10000000
             while b:
                if (m & b):
@@ -409,7 +402,11 @@ readROM("roms/plus2-0.rom") #carreguem la rom sempre
 readROM1("roms/plus2-1.rom") #carreguem la rom sempre
 readSpectrumFile() #funció que càrrega qualsevol snapshoot de spectrum... en cas de no fer-ho arrenca la ROM per defecte
 
-for i in range(6144): screenCache.append([-1, -1, -1, -1]) # attr, ink, paper, border
+for i in range(6144): screenCache.append([-1, -1, -1]) # pattern, attribute, border
+for i in range(256):
+   unFlash[0].append(i)
+   if (i & 0x80): unFlash[1].append((i & 0xC0) | ((i & 0x38) >> 3) | ((i & 0x07) << 3))
+   else: unFlash[1].append(i)
 
 pygame.init()
 #pantalla = pygame.display.set_mode((376, 312), pygame.SCALED,  vsync=1)
