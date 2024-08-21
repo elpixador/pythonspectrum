@@ -40,9 +40,8 @@ def check_events(event,app,spectrum):
                     spectrum.is_running = not spectrum.is_running
 
                 case "About":
-                    about_window(self.zx_screen, self.ui_manager)
+                    about_window(app, app.ui)
 
-            app.ui.reset_ui()
 
           # Reset to the first option
 """          dropdown_menu.selected_option = dropdown_options[0]

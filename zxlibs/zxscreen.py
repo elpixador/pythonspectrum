@@ -19,14 +19,14 @@ class Spectrum:
 class ZXScreen(pygame.Surface):
     def __new__(cls, size):
         # creates a new pygame.Surface object
-        return super(ZXScreen, cls).__new__(cls, size)
-    
-    def __init__(self,size):
+        return super(ZXScreen, cls).__new__(cls)
+
+    def __init__(self, size):
         super().__init__(size)
         self.screenCache = []
         for i in range(6144):
             self.screenCache.append([-1, -1, -1, -1])  # attr, ink, paper, border
-        self.flashReversed = False  
+        self.flashReversed = False
 
 
 class AppScreen:
@@ -193,7 +193,7 @@ def about_window(zx_surface, manager):
     about = pygame_gui.elements.UIWindow(
         pygame.Rect(center_me(dimensions, gap, scale)),
         manager,
-        window_display_title="About" + APPNAME + "...",
+        window_display_title="About " + APPNAME + "...",
         resizable=False,
         draggable=False,
     )

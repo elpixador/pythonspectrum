@@ -13,7 +13,7 @@ readROM()"""
 
 # Initialize the app screen
 app = AppScreen()
-# Initialize the ZX screen
+# Initialize the ZXSpectrum
 spectrum = Spectrum()
 
 # setting the clock and running flag
@@ -32,11 +32,6 @@ while app.is_running:
     for event in pygame.event.get():
         zxlibs.check_events(event,app,spectrum)
         app.ui.process_events(event)
-
-    app.fill_screen()  # DEBUG_INFO to be removed
-    app.ui.update(time_delta)
-    app.ui.draw_ui(app.get_screen())
-    pygame.display.update()
 
     if spectrum.is_running:
         # mach.interrupt()
@@ -69,5 +64,9 @@ while app.is_running:
 
                 # renderline(y)
 
+    app.fill_screen()  # DEBUG_INFO to be removed
+    app.ui.update(time_delta)
+    app.ui.draw_ui(app.get_screen())
+    pygame.display.update()
 
 sys.exit() # TODO: make it nicer that this
