@@ -195,14 +195,13 @@ class InstructionSet():
         
     @instruction([(0xED57, ('I', )), (0xED5F, ("R", ))], 0, "LD A, {0}", 9)
     def ld_a_i(instruction, registers, r):
-        val = registers[r]
+        ZXFlags.F5F3 = val = registers[r]
         registers.A = val
         ZXFlags.S = val & 0x80
         ZXFlags.Z = val == 0
         ZXFlags.H = 0
         ZXFlags.PV = registers.IFF2
         ZXFlags.N = 0
-        ZXFlags.setF3F5(val)
     
         
     #@instruction([(0xED47, ("I", )), (0xED5F, ("R", )), (0x00, (), 30) ],
@@ -363,8 +362,7 @@ class InstructionSet():
     @instruction([(0xC5, ("B", "C" )), (0xD5, ("D", "E" )), (0xE5, ("H", "L" )), (0xF5, ("A", "F" ))],
                  0, "PUSH {0}{1}", 11)
     def push_qq(instruction, registers, q, q2):
-        stack = (registers.SP - 2) & 0xFFFF
-        registers.SP = stack
+        registers.SP = stack = (registers.SP - 2) & 0xFFFF
         io.ZXmem[stack + 1] = registers[q]
         io.ZXmem[stack] = registers[q2]
     
@@ -372,8 +370,7 @@ class InstructionSet():
     @instruction([(0xDDE5, ("IX",  )), (0xFDE5, ("IY", ))],
                  0, "PUSH {0}", 15)
     def push_i(instruction, registers, i):
-        stack = (registers.SP - 2) & 0xFFFF
-        registers.SP = stack
+        registers.SP = stack = (registers.SP - 2) & 0xFFFF
         io.ZXmem[stack + 1] = registers[i] >> 8
         io.ZXmem[stack] = registers[i] & 255
 
@@ -456,8 +453,8 @@ class InstructionSet():
 
         ZXFlags.N = 0
         f5f3 = registers.A + val
-        ZXFlags.F3 = f5f3 & 0x08
-        ZXFlags.F5 = f5f3 & 0x02
+        ZXFlags.setF3(f5f3 & 0x08)
+        ZXFlags.setF5(f5f3 & 0x02)
         io.ZXmem[de_] = val
 
     @instruction([(0xEDB0, ())], 0, "LDIR", 21)
@@ -486,8 +483,8 @@ class InstructionSet():
         ZXFlags.PV = 0
         ZXFlags.N = 0
         f5f3 = registers.A + val
-        ZXFlags.F3 = f5f3 & 0x08
-        ZXFlags.F5 = f5f3 & 0x02
+        ZXFlags.setF3(f5f3 & 0x08)
+        ZXFlags.setF5(f5f3 & 0x02)
         io.ZXmem[de_] = val
 
 
@@ -511,8 +508,8 @@ class InstructionSet():
         ZXFlags.PV = (bc != 0)
         ZXFlags.N = 0
         f5f3 = registers.A + val
-        ZXFlags.F3 = f5f3 & 0x08
-        ZXFlags.F5 = f5f3 & 0x02
+        ZXFlags.setF3(f5f3 & 0x08)
+        ZXFlags.setF5(f5f3 & 0x02)
         io.ZXmem[de_] = val
 
     @instruction([(0xEDB8, ())], 0, "LDDR", 16)
@@ -541,8 +538,8 @@ class InstructionSet():
         ZXFlags.PV = 0
         ZXFlags.N = 0
         f5f3 = registers.A + val
-        ZXFlags.F3 = f5f3 & 0x08
-        ZXFlags.F5 = f5f3 & 0x02
+        ZXFlags.setF3(f5f3 & 0x08)
+        ZXFlags.setF5(f5f3 & 0x02)
         io.ZXmem[de_] = val
 
 
@@ -555,8 +552,8 @@ class InstructionSet():
         subtract8(registers.A, val, 0)
         ZXFlags.PV = registers.BC != 0
         f5f3 = registers.A - val -  ZXFlags.H
-        ZXFlags.F5 = f5f3 & 0x02
-        ZXFlags.F3 = f5f3 & 0x08
+        ZXFlags.setF5(f5f3 & 0x02)
+        ZXFlags.setF3(f5f3 & 0x08)
 
     @instruction([(0xEDB1, ())], 0, "CPIR", 16)
     def cpir(instruction, registers):
@@ -573,8 +570,8 @@ class InstructionSet():
             instruction.tstates = 16
         ZXFlags.PV = registers.BC != 0
         f5f3 = registers.A - val -  ZXFlags.H
-        ZXFlags.F5 = f5f3 & 0x02
-        ZXFlags.F3 = f5f3 & 0x08
+        ZXFlags.setF5(f5f3 & 0x02)
+        ZXFlags.setF3(f5f3 & 0x08)
 
     @instruction([(0xEDA9, ())], 0, "CPD", 16)
     def cpd(instruction, registers):
@@ -585,8 +582,8 @@ class InstructionSet():
         subtract8(registers.A, val, 0)
         ZXFlags.PV = registers.BC != 0
         f5f3 = registers.A - val -  ZXFlags.H
-        ZXFlags.F5 = f5f3 & 0x02
-        ZXFlags.F3 = f5f3 & 0x08
+        ZXFlags.setF5(f5f3 & 0x02)
+        ZXFlags.setF3(f5f3 & 0x08)
 
     @instruction([(0xEDB9, ())], 0, "CPDR", 16)
     def cpdr(instruction, registers):
@@ -603,8 +600,8 @@ class InstructionSet():
             instruction.tstates = 16
         ZXFlags.PV = registers.BC != 0
         f5f3 = res -  ZXFlags.H
-        ZXFlags.F5 = f5f3 & 0x02
-        ZXFlags.F3 = f5f3 & 0x08
+        ZXFlags.setF5(f5f3 & 0x02)
+        ZXFlags.setF3(f5f3 & 0x08)
 
     #----------------------------------------------------------------------
     # 8-Bit Arithmetic Group
@@ -809,28 +806,25 @@ class InstructionSet():
                   (0xFDba, ("D",), 8), (0xFDbb, ("E",), 8), (0xFDbc, ("IYH",), 8),
                   (0xFDbd, ("IYL",), 8)], 0, "CP {0}", 4)
     def cp_a_r(instruction, registers, r):
-        val = registers[r]
+        ZXFlags.F5F3 = val = registers[r]
         subtract8_check_overflow(registers.A, val, 0)
-        ZXFlags.setF3F5(val)
 
     @instruction([([0xfe, '-'], ())], 1, "CP {0:X}H", 7)
     def cp_a_n(instruction, registers, n):
         subtract8_check_overflow(registers.A, n, 0)
-        ZXFlags.setF3F5(n)
+        ZXFlags.F5F3 = n
 
 
     @instruction([(0xbe, ())], 0, "CP (HL)", 7)
     def cp_a_hl_(instruction, registers, ):
-        val = io.ZXmem[registers.HL]
+        ZXFlags.F5F3 =val = io.ZXmem[registers.HL]
         subtract8_check_overflow(registers.A, val, 0)
-        ZXFlags.setF3F5(val)
 
     @instruction([([0xDD, 0xBE, '-'], ("IX",)),
                   ([0xFD, 0xBE, '-'], ("IY",))], 1, "CP ({0}+{1:X}H)", 19)
     def cp_a_i_(instruction, registers, i, d):
-        val = io.ZXmem[registers[i] + get_8bit_twos_comp(d)]
+        ZXFlags.F5F3 = val = io.ZXmem[registers[i] + get_8bit_twos_comp(d)]
         subtract8_check_overflow(registers.A, val, 0)
-        ZXFlags.setF3F5(val)
 
     #---- INC s ----    
     @instruction([(0x3c, ("A",)), (0x04, ("B",)), (0x0c, ("C",)),
@@ -848,15 +842,13 @@ class InstructionSet():
     @instruction([(0x34, ())], 0, "INC (HL)", 11)
     def inc_hl_(instruction, registers):
         hl = registers.HL
-        new = add8_nocarry(io.ZXmem[hl], 1, 0)
-        io.ZXmem[hl] = new
+        io.ZXmem[hl] = add8_nocarry(io.ZXmem[hl], 1, 0)
 
     @instruction([([0xDD, 0x34, '-'], ("IX",)),
                   ([0xFD, 0x34, '-'], ("IY",))], 1, "INC ({0}+{1:X}H)", 23)
     def inc_i_(instruction, registers, i, d):
         pos = registers[i] + get_8bit_twos_comp(d)
-        new = add8_nocarry(io.ZXmem[pos], 1, 0)
-        io.ZXmem[pos] = new
+        io.ZXmem[pos] = add8_nocarry(io.ZXmem[pos], 1, 0)
 
 
     #---- DEC s ----
@@ -878,18 +870,16 @@ class InstructionSet():
     def dec_hl_(instruction, registers):
         hl = registers.HL
         val = io.ZXmem[hl]
-        new = subtract8(val, 1, 0)
+        io.ZXmem[hl] = subtract8(val, 1, 0)
         ZXFlags.PV = (val == 0x80)
-        io.ZXmem[hl] = new
 
     @instruction([([0xDD, 0x35, '-'], ("IX",)),
                   ([0xFD, 0x35, '-'], ("IY",))], 1, "DEC ({0}+{1:X}H)", 23)
     def dec_i_(instruction, registers, i, d):
         pos = registers[i] + get_8bit_twos_comp(d)
         val = io.ZXmem[pos]
-        new = subtract8(val, 1, 0)
+        io.ZXmem[pos] = subtract8(val, 1, 0)
         ZXFlags.PV = (val == 0x80)
-        io.ZXmem[pos] = new
 
     #--------------------------------------------------------------------
     # General-Purpose Arithmetic and CPU Control Groups
@@ -911,7 +901,7 @@ class InstructionSet():
         ZXFlags.S = a >> 7
         ZXFlags.Z = (a == 0)
         ZXFlags.PV = parities[a]
-        ZXFlags.setF3F5(a)
+        ZXFlags.F5F3 = a
         """            
         # https://raine.1emulation.com/archive/dev/z80-documented.pdf
         # (The Undocumented Z80 Documented)
@@ -967,10 +957,9 @@ class InstructionSet():
 
     @instruction([(0x2F, ())], 0, "CPL", 4)
     def cpl(instruction, registers):
-        registers.A = 0xFF ^ registers.A
+        ZXFlags.F5F3 = registers.A = (0xFF ^ registers.A)
         ZXFlags.N = 1
         ZXFlags.H = 1
-        ZXFlags.setF3F5(registers.A)
 
 
     @instruction([(0xED44, ())], 0, "NEG", 8)
@@ -985,14 +974,14 @@ class InstructionSet():
         ZXFlags.H = ZXFlags.C
         ZXFlags.N = 0
         ZXFlags.C = not ZXFlags.C
-        ZXFlags.setF3F5(registers.A)
+        ZXFlags.F5F3 = registers.A
 
     @instruction([(0x37, ())], 0, "SCF", 4)
     def scf(instruction, registers):
         ZXFlags.H = 0
         ZXFlags.N = 0
         ZXFlags.C = 1
-        ZXFlags.setF3F5(registers.A)
+        ZXFlags.F5F3 = registers.A
 
     @instruction([(0x00, ())], 0, "NOP", 4)
     def nop(instruction, registers):
@@ -1030,8 +1019,7 @@ class InstructionSet():
         ZXFlags.H = (a ^ res ^ b) & 0x1000
         ZXFlags.N = 0
         ZXFlags.C = res & 0x10000
-        ZXFlags.F3 = res & 0x0800
-        ZXFlags.F5 = res & 0x2000
+        ZXFlags.F5F3 = res >> 8
         registers.HL = res &  0xFFFF
 
     @instruction([(0xED7A, ("SP",)), (0xED4A, ("BC",)), (0xED5A, ("DE",)),(0xED6A, ("HL",))], 0, "ADC HL, {0}", 15)
@@ -1050,8 +1038,7 @@ class InstructionSet():
             ZXFlags.PV = a & res & 0x8000
         ZXFlags.N = 0
         ZXFlags.C = res & 0x10000
-        ZXFlags.F3 = res & 0x0800
-        ZXFlags.F5 = res & 0x2000
+        ZXFlags.F5F3 = res >> 8
         registers.HL = res & 0xFFFF
         
     @instruction([(0xED72, ("SP",)), (0xED42, ("BC",)), (0xED52, ("DE",)),(0xED62, ("HL",))], 0, "SBC HL, {0}", 15)
@@ -1062,8 +1049,7 @@ class InstructionSet():
         ZXFlags.S = res & 0x8000
         ZXFlags.N = 1
         ZXFlags.Z = (res == 0)
-        ZXFlags.F3 = res & 0x0800
-        ZXFlags.F5 = res & 0x2000
+        ZXFlags.setF5F3 = res >> 8
         if res & 0xFFFF:
             ZXFlags.H = (a ^ res ^ b) & 0x1000
             ZXFlags.PV = (b ^ a) & (a ^ res) & 0x8000
@@ -1083,8 +1069,7 @@ class InstructionSet():
         ZXFlags.H = (a ^ res ^ b) & 0x1000
         ZXFlags.N = 0
         ZXFlags.C = res & 0x10000
-        ZXFlags.F3 = res & 0x0800
-        ZXFlags.F5 = res & 0x2000
+        ZXFlags.F5F3 = res >> 8
         registers[i] = res & 0xFFFF
 
 
@@ -1107,40 +1092,34 @@ class InstructionSet():
     @instruction([(0x07, ())], 0, "RLCA", 4)
     def rlca(instruction, registers):
         c = registers.A >> 7
-        registers.A = ((registers.A << 1) | c) & 0xFF
+        ZXFlags.F5F3 = registers.A = ((registers.A << 1) | c) & 0xFF
         ZXFlags.C = c
         ZXFlags.H = 0
         ZXFlags.N = 0
-        ZXFlags.setF3F5(registers.A)
 
     @instruction([(0x17, ())], 0, "RLA", 4)
     def rla(instruction, registers):
         c = registers.A >> 7
-        pc = ZXFlags.C
-        registers.A = (registers.A << 1 | pc) & 0xFF
+        ZXFlags.F5F3 = registers.A = (registers.A << 1 | ZXFlags.C) & 0xFF
         ZXFlags.C = c
         ZXFlags.H = 0
         ZXFlags.N = 0
-        ZXFlags.setF3F5(registers.A)
 
     @instruction([(0x0F, ())], 0, "RRCA", 4)
     def rrca(instruction, registers):
         c = registers.A & 0x01
-        registers.A = (registers.A >> 1 | c << 7) & 0xFF
+        ZXFlags.F5F3 = registers.A = (registers.A >> 1 | c << 7) & 0xFF
         ZXFlags.C = c
         ZXFlags.H = 0
         ZXFlags.N = 0
-        ZXFlags.setF3F5(registers.A)
 
     @instruction([(0x1F, ())], 0, "RRA", 4)
     def rra(instruction, registers):
         c = registers.A & 0x01
-        pc = ZXFlags.C
-        registers.A = (registers.A >> 1 | pc << 7) & 0xFF
+        ZXFlags.F3F5 = registers.A = (registers.A >> 1 | ZXFlags.C << 7) & 0xFF
         ZXFlags.C = c
         ZXFlags.H = 0
         ZXFlags.N = 0
-        ZXFlags.setF3F5(registers.A)
         
 
     # RLC m    
@@ -1148,16 +1127,13 @@ class InstructionSet():
                   (0xCB03, ("E", )), (0xCB04, ("H", )), (0xCB05, ("L", ))],
                  0, "RLC {0}", 8)
     def rlc(instruction, registers, r):
-        registers[r] = rotate_left_carry(registers[r])
-        ZXFlags.setF3F5(registers[r])
+        ZXFlags.F5F3 = registers[r] = rotate_left_carry(registers[r])
         
     @instruction([(0xCB06, ( ))],
                  0, "RLC (HL)", 15)
     def rlc_hl_(instruction, registers):
         hl = registers.HL
-        val = rotate_left_carry(io.ZXmem[hl])
-        ZXFlags.setF3F5(val)
-        io.ZXmem[hl] = val
+        ZXFlags.F5F3 = io.ZXmem[hl] = rotate_left_carry(io.ZXmem[hl])
 
         
     @instruction([([0xDD, 0xCB, '-', 0x06], ("IX", )),
@@ -1165,9 +1141,7 @@ class InstructionSet():
                  2, "RLC ({0}+{1:X}H)", 23)
     def rlc_i_d(instruction, registers, i, d):
         pos = registers[i] + get_8bit_twos_comp(d)
-        new = rotate_left_carry(io.ZXmem[pos])
-        ZXFlags.setF3F5(new)
-        io.ZXmem[pos] = new
+        ZXFlags.F5F3 = io.ZXmem[pos] = rotate_left_carry(io.ZXmem[pos])
         
     # RL m
     @instruction([([0xCB, 0x10], ("B", )), ([0xCB, 0x11], ("C", )), ([0xCB, 0x12], ("D", )),
@@ -1175,25 +1149,20 @@ class InstructionSet():
                   ([0xCB, 0x17], ("A", ))],
                  2, "RL {0}", 8)
     def rl_r(instruction, registers, r):
-        registers[r] = rotate_left(registers[r])
-        ZXFlags.setF3F5(registers[r])
+        ZXFlags.F5F3 = registers[r] = rotate_left(registers[r])
         
     @instruction([([0xCB, 0x16], ())],
                  2, "RL (HL)", 15)
     def rl_hl(instruction, registers):
         hl = registers.HL
-        val = rotate_left(io.ZXmem[hl])
-        ZXFlags.setF3F5(val)
-        io.ZXmem[hl] = val
+        ZXFlags.F5F3 = io.ZXmem[hl] = rotate_left(io.ZXmem[hl])
         
     @instruction([([0xDD, 0xCB, "-", 0x16], ("IX", )),
                   ([0xFD, 0xCB, "-", 0x16], ("IY", ))],
                  2, "RL ({0}+{1:X}H)", 23)
     def rl_i(instruction, registers, i, d):
         pos = registers[i] + get_8bit_twos_comp(d)
-        val = rotate_left(io.ZXmem[pos])
-        ZXFlags.setF3F5(val)
-        io.ZXmem[pos] = val
+        ZXFlags.F5F3 = io.ZXmem[pos] = rotate_left(io.ZXmem[pos])
         
         
 
@@ -1205,16 +1174,13 @@ class InstructionSet():
                   (0xCB0B, ("E", )), (0xCB0C, ("H", )), (0xCB0D, ("L", ))],
                  0, "RRC {0}", 8)
     def rrc(instruction, registers, r):
-        registers[r] = rotate_right_carry(registers[r])
-        ZXFlags.setF3F5(registers[r])
+        ZXFlags.F5F3 = registers[r] = rotate_right_carry(registers[r])
         
     @instruction([(0xCB0E, ( ))],
                  0, "RRC (HL)", 15)
     def rrc_hl_(instruction, registers):
         hl = registers.HL
-        val = rotate_right_carry(io.ZXmem[hl])
-        ZXFlags.setF3F5(val)
-        io.ZXmem[hl] = val
+        ZXFlags.F5F3 = io.ZXmem[hl] = rotate_right_carry(io.ZXmem[hl])
 
         
     @instruction([([0xDD, 0xCB, '-', 0x0E], ("IX", )),
@@ -1222,9 +1188,7 @@ class InstructionSet():
                  2, "RRC ({0}+{1:X}H)", 23)
     def rrc_i_d(instruction, registers, i, d):
         pos = registers[i] + get_8bit_twos_comp(d)
-        new = rotate_right_carry(io.ZXmem[pos])
-        ZXFlags.setF3F5(new)
-        io.ZXmem[pos] = new
+        ZXFlags.F5F3 = io.ZXmem[pos] = rotate_right_carry(io.ZXmem[pos])
         
     # RR m
     @instruction([([0xCB, 0x18], ("B", )), ([0xCB, 0x19], ("C", )), ([0xCB, 0x1A], ("D", )),
@@ -1232,25 +1196,20 @@ class InstructionSet():
                   ([0xCB, 0x1F], ("A", ))],
                  2, "RR {0}", 8)
     def rr_r(instruction, registers, r):
-        registers[r] = rotate_right(registers[r])
-        ZXFlags.setF3F5(registers[r])
+        ZXFlags.F5F3 = registers[r] = rotate_right(registers[r])
         
     @instruction([([0xCB, 0x1E], ())],
                  2, "RR (HL)", 15)
     def rr_hl(instruction, registers):
         hl = registers.HL
-        val = rotate_right(io.ZXmem[hl])
-        ZXFlags.setF3F5(val)
-        io.ZXmem[hl] = val
+        ZXFlags.F5F3 = io.ZXmem[hl] = rotate_right(io.ZXmem[hl])
         
     @instruction([([0xDD, 0xCB, "-", 0x1E], ("IX", )),
                   ([0xFD, 0xCB, "-", 0x1E], ("IY", ))],
                  2, "RR ({0}+{1:X}H)", 23)
     def rr_i(instruction, registers, i, d):
         pos = registers[i] + get_8bit_twos_comp(d)
-        val = rotate_right(io.ZXmem[pos])
-        ZXFlags.setF3F5(val)
-        io.ZXmem[pos] = val
+        ZXFlags.F5F3 = io.ZXmem[pos] = rotate_right(io.ZXmem[pos])
         
         
 
@@ -1262,16 +1221,13 @@ class InstructionSet():
                   (0xCB23, ("E", )), (0xCB24, ("H", )), (0xCB25, ("L", ))],
                  0, "SLA {0}", 8)
     def sla_r(instruction, registers, r):
-        registers[r] = shift_left(registers[r])
-        ZXFlags.setF3F5(registers[r])
+        ZXFlags.F5F3 = registers[r] = shift_left(registers[r])
         
     @instruction([(0xCB26, ( ))],
                  0, "SLA (HL)", 15)
     def sla_hl_(instruction, registers):
         hl = registers.HL
-        val = shift_left(io.ZXmem[hl])
-        ZXFlags.setF3F5(val)
-        io.ZXmem[hl] = val
+        ZXFlags.F5F3 = io.ZXmem[hl] = shift_left(io.ZXmem[hl])
 
         
     @instruction([([0xDD, 0xCB, '-', 0x26], ("IX", )),
@@ -1279,9 +1235,7 @@ class InstructionSet():
                  2, "SLA ({0}+{1:X}H)", 23)
     def sla_i_d(instruction, registers, i, d):
         pos = registers[i] + get_8bit_twos_comp(d)
-        new = shift_left(io.ZXmem[pos])
-        ZXFlags.setF3F5(new)
-        io.ZXmem[pos] = new
+        ZXFlags.F5F3 = io.ZXmem[pos] = shift_left(io.ZXmem[pos])
 
 
     # SLL m    
@@ -1289,16 +1243,13 @@ class InstructionSet():
                   (0xCB33, ("E", )), (0xCB34, ("H", )), (0xCB35, ("L", ))],
                  0, "SLL {0}", 8)
     def sll_r(instruction, registers, r):
-        registers[r] = shift_left_logical(registers[r])
-        ZXFlags.setF3F5(registers[r])
+        ZXFlags.F5F3 = registers[r] = shift_left_logical(registers[r])
         
     @instruction([(0xCB36, ( ))],
                  0, "SLL (HL)", 15)
     def sll_hl_(instruction, registers):
         hl = registers.HL
-        val = shift_left_logical(io.ZXmem[hl])
-        ZXFlags.setF3F5(val)
-        io.ZXmem[hl] = val
+        ZXFlags.F5F3 = io.ZXmem[hl] = shift_left_logical(io.ZXmem[hl])
 
         
     @instruction([([0xDD, 0xCB, '-', 0x36], ("IX", )),
@@ -1306,9 +1257,7 @@ class InstructionSet():
                  2, "SLL ({0}+{1:X}H)", 23)
     def sll_i_d(instruction, registers, i, d):
         pos = registers[i] + get_8bit_twos_comp(d)
-        new = shift_left_logical(io.ZXmem[pos])
-        ZXFlags.setF3F5(new)
-        io.ZXmem[pos] = new
+        ZXFlags.F5F3 = io.ZXmem[pos] = shift_left_logical(io.ZXmem[pos])
 
 
     # SRA m
@@ -1317,25 +1266,20 @@ class InstructionSet():
                   ([0xCB, 0x2F], ("A", ))],
                  2, "SRA {0}", 8)
     def sra_r(instruction, registers, r):
-        registers[r] = shift_right(registers[r])
-        ZXFlags.setF3F5(registers[r])
+        ZXFlags.F5F3 = registers[r] = shift_right(registers[r])
         
     @instruction([([0xCB, 0x2E], ())],
                  2, "SRA (HL)", 15)
     def sra_hl(instruction, registers):
         hl = registers.HL
-        val = shift_right(io.ZXmem[hl])
-        ZXFlags.setF3F5(val)
-        io.ZXmem[hl] = val
+        ZXFlags.F5F3 = io.ZXmem[hl] = shift_right(io.ZXmem[hl])
         
     @instruction([([0xDD, 0xCB, "-", 0x2E], ("IX", )),
                   ([0xFD, 0xCB, "-", 0x2E], ("IY", ))],
                  2, "SRA ({0}+{1:X}H)", 23)
     def sra_i(instruction, registers, i, d):
         pos = registers[i] + get_8bit_twos_comp(d)
-        val = shift_right(io.ZXmem[pos])
-        ZXFlags.setF3F5(val)
-        io.ZXmem[pos] = val
+        ZXFlags.F5F3 = io.ZXmem[pos] = shift_right(io.ZXmem[pos])
         
 
     # SRL m
@@ -1344,25 +1288,20 @@ class InstructionSet():
                   ([0xCB, 0x3F], ("A", ))],
                  2, "SRL {0}", 8)
     def srl_r(instruction, registers, r):
-        registers[r] = shift_right_logical(registers[r])
-        ZXFlags.setF3F5(registers[r])
+        ZXFlags.F5F3 = registers[r] = shift_right_logical(registers[r])
         
     @instruction([([0xCB, 0x3E], ())],
                  2, "SRL (HL)", 15)
     def srl_hl(instruction, registers):
         hl = registers.HL
-        val = shift_right_logical(io.ZXmem[hl])
-        ZXFlags.setF3F5(val)
-        io.ZXmem[hl] = val
+        ZXFlags.F5F3 = io.ZXmem[hl] = shift_right_logical(io.ZXmem[hl])
         
     @instruction([([0xDD, 0xCB, "-", 0x3E], ("IX", )),
                   ([0xFD, 0xCB, "-", 0x3E], ("IY", ))],
                  2, "SRL ({0}+{1:X}H)", 23)
     def srl_i(instruction, registers, i, d):
         pos = registers[i] + get_8bit_twos_comp(d)
-        val = shift_right_logical(io.ZXmem[pos])
-        ZXFlags.setF3F5(val)
-        io.ZXmem[pos] = val
+        ZXFlags.F5F3 = io.ZXmem[pos] = shift_right_logical(io.ZXmem[pos])
 
         
     @instruction([([0xED, 0x6F], ())],
@@ -1377,7 +1316,7 @@ class InstructionSet():
         ZXFlags.H = 0
         ZXFlags.N = 0
         ZXFlags.PV = parities[a]
-        ZXFlags.setF3F5(a)
+        ZXFlags.F5F3 = a
         io.ZXmem[registers.HL] = hl
 
     @instruction([([0xED, 0x67], ())],
@@ -1392,7 +1331,7 @@ class InstructionSet():
         ZXFlags.H = 0
         ZXFlags.N = 0
         ZXFlags.PV = parities[a]
-        ZXFlags.setF3F5(a)
+        ZXFlags.F5F3 = a
         io.ZXmem[registers.HL] = hl
 
 
@@ -1417,19 +1356,18 @@ class InstructionSet():
             #registers.condition.F5 = (registers[reg] & (0x01 << bit))
         #if bit == 3:
             #registers.condition.F3 = (registers[reg] & (0x01 << bit))
-        ZXFlags.setF3F5(registers[reg])
+        ZXFlags.F5F3 = registers[reg]
 
     @instruction( [ ([0xCB, 0x40 + (b << 3) + 6], (b,)) for b in range(8) ] ,
                  2, "BIT {0}, (HL)", 12)
     def bit_hl(instruction, registers, bit):
-        val = io.ZXmem[registers.HL]
+        ZXFlags.F5F3 = val = io.ZXmem[registers.HL]
         res = val & (0x01 << bit)
         ZXFlags.Z = (res == 0)
         ZXFlags.H = 1
         ZXFlags.N = 0
         ZXFlags.PV = ZXFlags.Z
         ZXFlags.S = res & 0x80
-        ZXFlags.setF3F5(val)
 
     @instruction( [ ([I, 0xCB, '-', 0x40 + (b << 3) + 6], (Ir, b,)) for b in range(8) for I, Ir in index_bytes] ,
                  2, "BIT {1}, ({0}+{2:X}H)", 20)
@@ -1442,7 +1380,7 @@ class InstructionSet():
         ZXFlags.N = 0
         ZXFlags.PV = ZXFlags.Z
         ZXFlags.S = res & 0x80
-        ZXFlags.setF3F5(pos >> 8)
+        ZXFlags.F5F3 = pos >> 8
 
     @instruction([ ([0xCB, 0xc0 + (b << 3) + register_bits[reg]], (b, reg))
                    for b in range(8)
@@ -1455,8 +1393,7 @@ class InstructionSet():
                  2, "SET {0}, (HL)", 15)
     def set_hl(instruction, registers, bit):
         hl = registers.HL
-        val = io.ZXmem[hl] | (0x01 << bit)
-        io.ZXmem[hl] = val
+        io.ZXmem[hl] = io.ZXmem[hl] | (0x01 << bit)
 
     @instruction( [ ([I, 0xCB, '-', 0xc0 + (b << 3) + 6], (Ir, b,))
                     for b in range(8)
@@ -1464,8 +1401,7 @@ class InstructionSet():
                  2, "SET {1}, ({0}+{2:X}H)", 23)
     def set_i(instruction, registers, i, bit, d):
         pos = registers[i] + get_8bit_twos_comp(d)
-        val = io.ZXmem[pos] | (0x01 << bit)
-        io.ZXmem[pos] = val
+        io.ZXmem[pos] = io.ZXmem[pos] | (0x01 << bit)
 
     @instruction([ ([0xCB, 0x80 + (b << 3) + register_bits[reg]], (b, reg))
                    for b in range(8)
@@ -1479,8 +1415,7 @@ class InstructionSet():
                  2, "RES {0}, (HL)", 15)
     def res_hl(instruction, registers, bit):
         hl = registers.HL
-        val = io.ZXmem[hl] & ~(0x01 << bit)
-        io.ZXmem[hl] = val
+        io.ZXmem[hl] = io.ZXmem[hl] & ~(0x01 << bit)
 
     @instruction( [ ([I, 0xCB, '-', 0x80 + (b << 3) + 6], (Ir, b,))
                     for b in range(8)
@@ -1488,8 +1423,7 @@ class InstructionSet():
                  2, "RES {1}, ({0}+{2:X}H)", 23)
     def res_i(instruction, registers, i, bit, d):
         pos = registers[i] + get_8bit_twos_comp(d)
-        val = io.ZXmem[pos] & ~(0x01 << bit)
-        io.ZXmem[pos] = val
+        io.ZXmem[pos] = io.ZXmem[pos] & ~(0x01 << bit)
 
 
 

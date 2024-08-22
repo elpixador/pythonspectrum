@@ -18,15 +18,16 @@ class ZXFlagsClass(object):
     def reset(self):
         self.S = 0
         self.Z = 0
-        self.F5 = 0
+        #self.F5 = 0
         self.H = 0
-        self.F3 = 0
+        #self.F3 = 0
         self.PV = 0
         self.N = 0
         self.C = 0
+        self.F5F3 = 0
     
     def __getattribute__(self, reg):
-        if reg in ['S', 'Z', 'F5', 'H', 'F3', 'PV', 'N', 'C']:
+        if reg in ['S', 'Z', 'H', 'PV', 'N', 'C']:
             if super().__getattribute__(reg): return 1
             else: return 0
         else:
@@ -41,27 +42,38 @@ class ZXFlagsClass(object):
         return (
             (0x80 if super().__getattribute__('S') else 0) |
             (0x40 if super().__getattribute__('Z') else 0) |
-            (0x20 if super().__getattribute__('F5') else 0) |
+            #(0x20 if super().__getattribute__('F5') else 0) |
             (0x10 if super().__getattribute__('H') else 0) |
-            (0x08 if super().__getattribute__('F3') else 0) |
+            #(0x08 if super().__getattribute__('F3') else 0) |
             (0x04 if super().__getattribute__('PV') else 0) |
             (0x02 if super().__getattribute__('N') else 0) |
-            (0x01 if super().__getattribute__('C') else 0)
+            (0x01 if super().__getattribute__('C') else 0) |
+            (super().__getattribute__('F5F3') & 0x28)
         )
     
     def setAsF(self, f):
         self.S = (f & 0b10000000)
         self.Z = (f & 0b01000000)
-        self.F5 = (f & 0b00100000)
+        #self.F5 = (f & 0b00100000)
         self.H = (f & 0b00010000)
-        self.F3 = (f & 0b00001000)
+        #self.F3 = (f & 0b00001000)
         self.PV = (f & 0b00000100)
         self.N = (f & 0b00000010)
         self.C = (f & 0b00000001)
+        self.F5F3 = (f & 0b00101000)
     
-    def setF3F5(self, f):
-        self.F5 = (f & 0b00100000)
-        self.F3 = (f & 0b00001000)
+    def setF3(self, f):
+        if f:
+            self.F5F3 = self.F5F3 | 0b00001000
+        else:
+            self.F5F3 = self.F5F3 & 0b11110111
+
+    def setF5(self, f):
+        if f:
+            self.F5F3 = self.F5F3 | 0b00100000
+        else:
+            self.F5F3 = self.F5F3 & 0b11011111
+
 
 ZXFlags = ZXFlagsClass()
 
@@ -86,24 +98,20 @@ def make_8bit_twos_comp(val):
 
 def subtract8(a, b, cf):
     """ subtract b, a and carry,  return result and set flags """
-    res = a - b - cf
+    ZXFlags.F5F3 = res = a - b - cf
     
     ZXFlags.S = res & 0x80
     ZXFlags.N = 1
     ZXFlags.Z = (res == 0)
-    ZXFlags.F3 = res & 0x08
-    ZXFlags.F5 = res & 0x20    
     ZXFlags.H = (a ^ res ^ b) & 0x10
     return res &  0xFF
     
 def subtract8_check_overflow(a, b, cf):
-    res = a - b - cf
+    ZXFlags.F5F3 = res = a - b - cf
     
     ZXFlags.S = res & 0x80
     ZXFlags.N = 1
     ZXFlags.Z = (res == 0)
-    ZXFlags.F3 = res & 0x08
-    ZXFlags.F5 = res & 0x20    
     ZXFlags.H = (a ^ res ^ b) & 0x10
     ZXFlags.PV = (b ^ a) & (a ^ res) & 0x80
     ZXFlags.C = res & 0x100
@@ -111,27 +119,23 @@ def subtract8_check_overflow(a, b, cf):
 
 def add8(a, b, cf):
     """ add a, b and carry flag,  return result and set flags """
-    res = a + b + cf
+    ZXFlags.F5F3 = res = a + b + cf
     ZXFlags.S = res & 0x80
     ZXFlags.Z = (res & 0xFF) == 0
     ZXFlags.H = (a ^ res ^ b) & 0x10
     ZXFlags.PV = (a ^ res) & (b ^ res) & 0x80
     ZXFlags.N = 0
     ZXFlags.C = res & 0x100
-    ZXFlags.F3 = res & 0x08
-    ZXFlags.F5 = res & 0x20
     return res &  0xFF
 
 def add8_nocarry(a, b, cf):
     """ add a, b and carry flag,  return result and set flags """
-    res = a + b + cf
+    ZXFlags.F5F3 = res = a + b + cf
     ZXFlags.S = res & 0x80
     ZXFlags.Z = (res & 0xFF) == 0
     ZXFlags.H = (a ^ res ^ b) & 0x10
     ZXFlags.PV = (a ^ res) & (b ^ res) & 0x80
     ZXFlags.N = 0
-    ZXFlags.F3 = res & 0x08
-    ZXFlags.F5 = res & 0x20
     return res &  0xFF
 
 def inc16(val):
@@ -153,7 +157,7 @@ def parity(n):
     return not (p % 2) 
 
 def a_and_n(registers, n):
-    a = registers.A & n
+    ZXFlags.F5F3 = a = (registers.A & n)
     registers.A = a
     ZXFlags.H = 1
     ZXFlags.N = 0
@@ -161,11 +165,10 @@ def a_and_n(registers, n):
     ZXFlags.C = 0
     ZXFlags.Z = (a == 0)
     ZXFlags.S = a & 0x80
-    ZXFlags.setF3F5(a)
 
 
 def a_or_n(registers, n):
-    a = registers.A | n
+    ZXFlags.F5F3 = a = registers.A | n
     registers.A = a
     ZXFlags.H = 0
     ZXFlags.N = 0
@@ -173,10 +176,9 @@ def a_or_n(registers, n):
     ZXFlags.C = 0
     ZXFlags.Z = (a == 0)
     ZXFlags.S = a & 0x80
-    ZXFlags.setF3F5(a)
     
 def a_xor_n(registers, n):
-    a = registers.A ^ n
+    ZXFlags.F5F3 = a = registers.A ^ n
     registers.A = a
     ZXFlags.H = 0
     ZXFlags.N = 0
@@ -184,7 +186,6 @@ def a_xor_n(registers, n):
     ZXFlags.C = 0
     ZXFlags.Z = (a == 0)
     ZXFlags.S = a & 0x80
-    ZXFlags.setF3F5(a)
  
 def rotate_left_carry(n):
     c = n >> 7
