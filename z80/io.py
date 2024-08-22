@@ -145,34 +145,34 @@ class ay38912(object):
         if (audioEnable & 0x09): # canal A
             if (audioEnable & 0x01):
                 if (self._audioAPeriod <= 0):
-                    self._audioAToca = (self._audioAToca + 1) % 2
+                    self._audioAToca ^= 1
                     self._audioAPeriod = self._audioregs01
                 else: self._audioAPeriod -= self._audioDecPeriod
                 tone = self._audioAToca
-            else: tone = 0
-            if (audioEnable & 0x08): tone |= noise
+                if (audioEnable & 0x08): tone |= noise
+            else: tone = noise            
             res += self._audiovolums[tone][self._audioreg[8]]
 
         if (audioEnable & 0x12): # canal B
             if (audioEnable & 0x02):
                 if (self._audioBPeriod <= 0):
-                    self._audioBToca = (self._audioBToca + 1) % 2
+                    self._audioBToca ^= 1
                     self._audioBPeriod = self._audioregs23
                 else: self._audioBPeriod -= self._audioDecPeriod
                 tone = self._audioBToca
-            else: tone = 0
-            if (audioEnable & 0x10): tone |= noise
+                if (audioEnable & 0x10): tone |= noise
+            else: tone = noise
             res += self._audiovolums[tone][self._audioreg[9]]
 
         if (audioEnable & 0x24): # canal C
             if (audioEnable & 0x04):
                 if (self._audioCPeriod <= 0):
-                    self._audioCToca = (self._audioCToca + 1) % 2
+                    self._audioCToca ^= 1
                     self._audioCPeriod = self._audioregs45
                 else: self._audioCPeriod -= self._audioDecPeriod
                 tone = self._audioCToca
-            else: tone = 0
-            if (audioEnable & 0x20): tone |= noise
+                if (audioEnable & 0x20): tone |= noise
+            else: tone = noise            
             res += self._audiovolums[tone][self._audioreg[10]]
 
         return res
