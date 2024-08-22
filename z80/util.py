@@ -58,31 +58,33 @@ class ZXFlagsClass(object):
         self.PV = (f & 0b00000100)
         self.N = (f & 0b00000010)
         self.C = (f & 0b00000001)
+    
+    def setF3F5(self, f):
+        self.F5 = (f & 0b00100000)
+        self.F3 = (f & 0b00001000)
 
 ZXFlags = ZXFlagsClass()
 
 def get_16bit_twos_comp(val):
     """ Return the value of an 8bit 2s comp number"""
-    if (val & 0x8000) == 0:
-        return val
-    else:
+    if (val & 0x8000):
         return - ((val ^  0xFFFF) +  1)
+    else:
+        return val
 
 def get_8bit_twos_comp(val):
     """ Return the value of an 8bit 2s comp number"""
-    if (val & 0x80) == 0:
-        return val
+    if (val & 0x80):
+        return - ((val ^  0xFF) +  1)
     else:
-        return - ((val ^  0xFF) +  1) 
+        return val
         
 def make_8bit_twos_comp(val):
     if val > -1:
         return val
-    val = (0 - val) ^  0xFF
-    val += 1
-    return val
+    return ((0 - val) ^ 0xFF) + 1
 
-def subtract8(a, b, cf, PV=False, C=False):
+def subtract8(a, b, cf):
     """ subtract b, a and carry,  return result and set flags """
     res = a - b - cf
     
@@ -92,17 +94,22 @@ def subtract8(a, b, cf, PV=False, C=False):
     ZXFlags.F3 = res & 0x08
     ZXFlags.F5 = res & 0x20    
     ZXFlags.H = (a ^ res ^ b) & 0x10
-    if PV:
-        ZXFlags.PV = (b ^ a) & (a ^ res) & 0x80
-
-    if C:
-        ZXFlags.C = res & 0x100
     return res &  0xFF
     
 def subtract8_check_overflow(a, b, cf):
-    return subtract8(a, b, cf, PV=True, C=True)
+    res = a - b - cf
+    
+    ZXFlags.S = res & 0x80
+    ZXFlags.N = 1
+    ZXFlags.Z = (res == 0)
+    ZXFlags.F3 = res & 0x08
+    ZXFlags.F5 = res & 0x20    
+    ZXFlags.H = (a ^ res ^ b) & 0x10
+    ZXFlags.PV = (b ^ a) & (a ^ res) & 0x80
+    ZXFlags.C = res & 0x100
+    return res &  0xFF
 
-def add8(a, b, cf, C=True):
+def add8(a, b, cf):
     """ add a, b and carry flag,  return result and set flags """
     res = a + b + cf
     ZXFlags.S = res & 0x80
@@ -110,8 +117,19 @@ def add8(a, b, cf, C=True):
     ZXFlags.H = (a ^ res ^ b) & 0x10
     ZXFlags.PV = (a ^ res) & (b ^ res) & 0x80
     ZXFlags.N = 0
-    if C:
-        ZXFlags.C = res & 0x100
+    ZXFlags.C = res & 0x100
+    ZXFlags.F3 = res & 0x08
+    ZXFlags.F5 = res & 0x20
+    return res &  0xFF
+
+def add8_nocarry(a, b, cf):
+    """ add a, b and carry flag,  return result and set flags """
+    res = a + b + cf
+    ZXFlags.S = res & 0x80
+    ZXFlags.Z = (res & 0xFF) == 0
+    ZXFlags.H = (a ^ res ^ b) & 0x10
+    ZXFlags.PV = (a ^ res) & (b ^ res) & 0x80
+    ZXFlags.N = 0
     ZXFlags.F3 = res & 0x08
     ZXFlags.F5 = res & 0x20
     return res &  0xFF
@@ -143,7 +161,7 @@ def a_and_n(registers, n):
     ZXFlags.C = 0
     ZXFlags.Z = (a == 0)
     ZXFlags.S = a & 0x80
-    set_f5_f3(a)
+    ZXFlags.setF3F5(a)
 
 
 def a_or_n(registers, n):
@@ -155,7 +173,7 @@ def a_or_n(registers, n):
     ZXFlags.C = 0
     ZXFlags.Z = (a == 0)
     ZXFlags.S = a & 0x80
-    set_f5_f3(a)
+    ZXFlags.setF3F5(a)
     
 def a_xor_n(registers, n):
     a = registers.A ^ n
@@ -166,7 +184,7 @@ def a_xor_n(registers, n):
     ZXFlags.C = 0
     ZXFlags.Z = (a == 0)
     ZXFlags.S = a & 0x80
-    set_f5_f3(a)
+    ZXFlags.setF3F5(a)
  
 def rotate_left_carry(n):
     c = n >> 7
@@ -268,9 +286,3 @@ def shift_right_logical(n):
 
 def offset_pc(registers, jump):
     registers.PC = (registers.PC + get_8bit_twos_comp(jump)) & 0xFFFF
-        
-def set_f5_f3(v):
-    ZXFlags.F5 = v & 0x20
-    ZXFlags.F3 = v & 0x08
-
-    
