@@ -76,8 +76,8 @@ class ay38912(object):
     _audioregs23 = 0
     _audioregs45 = 0
     _audiovolums = (
-        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-        (0, -625*1, -625*2, -625*3, -625*4, -625*5, -625*6, -625*7, -625*8, -625*9, -625*10, -625*11, -625*12, -625*13, -625*14, -625*15)
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), # volums 0-16 (16=envelope mode, emulat com a to normal a volum 7)
+        (0, -625*1, -625*2, -625*3, -625*4, -625*5, -625*6, -625*7, -625*8, -625*9, -625*10, -625*11, -625*12, -625*13, -625*14, -625*15, -625*7)
     )
 
     _audioAPeriod = 0
@@ -151,7 +151,7 @@ class ay38912(object):
                 tone = self._audioAToca
             else: tone = 0
             if (audioEnable & 0x08): tone |= noise
-            res += self._audiovolums[tone][self._audioreg[8] & 0x0F]
+            res += self._audiovolums[tone][self._audioreg[8]]
 
         if (audioEnable & 0x12): # canal B
             if (audioEnable & 0x02):
@@ -162,7 +162,7 @@ class ay38912(object):
                 tone = self._audioBToca
             else: tone = 0
             if (audioEnable & 0x10): tone |= noise
-            res += self._audiovolums[tone][self._audioreg[9] & 0x0F]
+            res += self._audiovolums[tone][self._audioreg[9]]
 
         if (audioEnable & 0x24): # canal C
             if (audioEnable & 0x04):
@@ -173,7 +173,7 @@ class ay38912(object):
                 tone = self._audioCToca
             else: tone = 0
             if (audioEnable & 0x20): tone |= noise
-            res += self._audiovolums[tone][self._audioreg[10] & 0x0F]
+            res += self._audiovolums[tone][self._audioreg[10]]
 
         return res
 
