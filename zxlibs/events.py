@@ -42,10 +42,5 @@ def check_events(event,app,spectrum):
                 case "About":
                     about_window(app, app.ui)
 
-
-          # Reset to the first option
-"""          dropdown_menu.selected_option = dropdown_options[0]
-          dropdown_menu.selected_option_text = dropdown_options[0]
-          dropdown_menu.set_item_list(dropdown_options)  # Update the dropdown menu"""
-
-# main_screen.ui_manager.process_events(event)
+            # To reset to the first option in the menu
+            app.ui.reset_ui()

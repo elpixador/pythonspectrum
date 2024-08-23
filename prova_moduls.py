@@ -7,6 +7,7 @@ from zxlibs import AppScreen, Spectrum
 # INICI
 zxlibs.show_platform()
 
+
 """# Initialize the Z80 machine
 mach = Z80()
 readROM()"""

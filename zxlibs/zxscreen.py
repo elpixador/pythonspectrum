@@ -110,7 +110,7 @@ class UILayer(pygame_gui.UIManager):
         # we are going to allow just 1 dropdown and as many buttons as you want
         buttons = [
             ("Load Game", "button"),
-            ("Options", "dropdown"),
+            ("Options", "dropdown")
         ]
         self.dropdown_list = [
             "Options",  # sync this with dropdown button
@@ -118,7 +118,7 @@ class UILayer(pygame_gui.UIManager):
             "Reset",
             "Screenshot",
             "About",
-            "Quit",
+            "Quit"
         ]
         num_buttons = len(buttons)
         button_row = []
@@ -133,7 +133,7 @@ class UILayer(pygame_gui.UIManager):
                     pygame_gui.elements.UIButton(
                         relative_rect=pygame.Rect(position, button_size),
                         text=text,
-                        manager=self,
+                        manager=self
                     )
                 )
             elif button_type == "dropdown":
@@ -142,10 +142,9 @@ class UILayer(pygame_gui.UIManager):
                         relative_rect=pygame.Rect(position, button_size),
                         options_list=self.dropdown_list,
                         starting_option=self.dropdown_list[0],
-                        manager=self,
+                        manager=self
                     )
                 )
-                self.dropdown = button_row[-1]
 
 
 # FUNCTIONS
