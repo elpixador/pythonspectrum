@@ -159,3 +159,5 @@ dmypy.json
 cython_debug/
 
 screenshot*.png
+/.devcontainer
+/.github
