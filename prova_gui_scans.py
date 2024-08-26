@@ -752,9 +752,8 @@ while True:
                     audiocount = 0
                     stream.write(buffaudio) #comentar en cas d'anar lent                
             else:
-                    audiovalue = audioword + io.ZXay.calc()
-                    buffaudio[audiocount] = audiovalue
-
+                    audiovalue = buffaudio[audiocount] = audioword + io.ZXay.calc()
+                    
                     if(capture==True):
                         myVideoCap.record_audio(audiovalue)
                     audiocount += 1
