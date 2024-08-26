@@ -675,8 +675,8 @@ class VideoCap():
 
        final_clip.write_videofile("output_video.mp4", codec="libx264")
        #final_clip.write_videofile("output_video.ogv", codec="libvorbis") no codec no fun
-       os.remove("video.avi")
-       os.remove("output_recorded_audio.wav")
+      # os.remove("video.avi")
+      # os.remove("output_recorded_audio.wav")
        
 
 
@@ -752,10 +752,12 @@ while True:
                     audiocount = 0
                     stream.write(buffaudio) #comentar en cas d'anar lent                
             else:
-                    buffaudio[audiocount] = audioword + io.ZXay.calc()
-                    audiocount += 1
+                    audiovalue = audioword + io.ZXay.calc()
+                    buffaudio[audiocount] = audiovalue
+
                     if(capture==True):
-                        myVideoCap.record_audio(audioword)
+                        myVideoCap.record_audio(audiovalue)
+                    audiocount += 1
                 
         renderline(y)
         
