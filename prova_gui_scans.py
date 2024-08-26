@@ -9,6 +9,16 @@ from pygame_gui.core.utility import create_resource_path
 import numpy
 import sounddevice as sd
 
+import soundfile as sf
+import queue
+
+#for videocapture
+import cv2
+#for audio+video output moviepy2 no cárrega
+from moviepy.editor import AudioFileClip, VideoFileClip
+import time
+
+
 ## Z80 CPU Emulator / https://github.com/cburbridge/z80
 from z80 import util, io, registers, instructions
 
@@ -593,6 +603,84 @@ def load_game():
 
 
 
+class VideoCap():
+
+    def __init__(self):
+        self.codec = cv2.VideoWriter_fourcc(*"XVID")
+        self.out = None
+        self.capture = False
+        self.recording_thread = None
+
+        # Set up audio parameters
+        self.sample_rate = 12025  
+        
+        self.audio_buffer = queue.Queue()
+
+    def start_capture(self):
+        print("inici captura")
+        self.capture = True
+        self.out = cv2.VideoWriter("video.avi", self.codec, 38.0, (main_screen.dimensions[0], main_screen.dimensions[1] - main_screen.UI_HEIGHT))
+        self.num_frames = 0  # Initialize frame counter
+        self.start_time = time.time()  # Record start time
+        self.recording_thread = threading.Thread(target=self.video_capturing)
+        self.recording_thread.start()
+    
+    def stop_capture(self):
+        print("final captura")
+        self.capture = False
+        self.recording_thread.join()
+        self.out.release()
+        self.save_audio() #genera audio capturat
+        self.combine_audio_video()
+
+    def video_capturing(self):
+        while self.capture:
+            area = main_screen.dimensions[0], main_screen.dimensions[1] - main_screen.UI_HEIGHT
+            screenshot = pygame.Surface(area)
+            screenshot.blit(main_screen.screen,(0,-main_screen.UI_HEIGHT))
+
+            view = pygame.surfarray.array3d(screenshot)
+            view = view.transpose([1,0,2])
+            frame = cv2.cvtColor(view, cv2.COLOR_RGB2BGR)
+
+            self.out.write(frame) #Write it to the output file
+            self.num_frames += 1  # Increment frame counter 
+
+    def record_audio(self, indata):
+       self.audio_buffer.put(indata)
+    
+    def save_audio(self):
+       audio_data = []
+       while not self.audio_buffer.empty():
+           audio_data.append(self.audio_buffer.get())
+  
+       #audio_data = numpy.concatenate(audio_data, axis=0)
+       sf.write("output_recorded_audio.wav", numpy.array(audio_data, dtype = numpy.int16), self.sample_rate)        
+
+    def combine_audio_video(self):
+       video_clip = VideoFileClip("video.avi")
+       audio_clip = AudioFileClip("output_recorded_audio.wav")
+
+       # Calculate the actual frame rate based on recorded frames and elapsed time
+       actual_frame_rate = self.num_frames / (time.time() - self.start_time)
+    
+       print("Frames {} / Audio {}seg. / actual_frame_rate {} / temps {} ".format(self.num_frames, audio_clip.duration, actual_frame_rate, (time.time() - self.start_time)))
+       actual_frame_rate = self.num_frames / audio_clip.duration
+
+       final_clip = video_clip.set_audio(audio_clip)
+       final_clip = final_clip.set_duration(audio_clip.duration)  # Adjust duration
+              
+       final_clip = final_clip.set_fps(actual_frame_rate)  # Set the calculated frame rate
+       
+
+       final_clip.write_videofile("output_video.mp4", codec="libx264")
+       #final_clip.write_videofile("output_video.ogv", codec="libvorbis") no codec no fun
+       os.remove("video.avi")
+       os.remove("output_recorded_audio.wav")
+       
+
+
+
 # INICI
 print("Platform is: ", platform.system())
 
@@ -636,6 +724,11 @@ cicles = 0
 audioword = 0
 pausa = False
 playAudio = True
+capture = False
+
+#inicialitza captura video
+myVideoCap = VideoCap()
+
 
 # Main loop
 while True:
@@ -661,6 +754,8 @@ while True:
             else:
                     buffaudio[audiocount] = audioword + io.ZXay.calc()
                     audiocount += 1
+                    if(capture==True):
+                        myVideoCap.record_audio(audioword)
                 
         renderline(y)
         
@@ -685,10 +780,17 @@ while True:
                         else:
                             pausa = False
                         
-                    case 86: #vol Down '-'
-                        pass
-                    case 87: #vol Up '+'
-                        pass
+                    case 86: # Capture ON /OFF
+                        if (capture == False):
+                            capture = True
+                            print("Capture[ON]")
+                            myVideoCap.start_capture()
+
+                        else:
+                            capture = False
+                            print("Capture[OFF]")
+                            myVideoCap.stop_capture()  
+                    
                     case 85: #togle scale '*'
                         main_screen.scale_up()
                         main_screen.init_gui()
