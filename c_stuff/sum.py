@@ -1,6 +1,9 @@
-import ctypes
+import ctypes, platform
 
-_sum = ctypes.CDLL("c_stuff/libsum.dll")
+if platform.system() == "Windows":
+    _sum = ctypes.CDLL("c_stuff/libsum.dll")
+else:
+    _sum = ctypes.CDLL("c_stuff/libsum.so")
 _sum.our_function.argtypes = (ctypes.c_int, ctypes.POINTER(ctypes.c_int))
 
 def our_function(numbers):
