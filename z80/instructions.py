@@ -985,7 +985,25 @@ class InstructionSet():
 
     @instruction([(0x00, ())], 0, "NOP", 4)
     def nop(instruction, registers):
-        pass
+        if registers.PC == 0x0556+1: # LD-BYTES - https://skoolkid.github.io/rom/asm/0556.html
+            """
+            Input:
+                A 	+00 (header block) or +FF (data block)
+                F 	Carry flag set if loading, reset if verifying
+                DE 	Block length
+                IX 	Start address
+            Output:
+                F 	Carry flag reset if there was an error
+            """
+            if ZXFlags.C:
+                ZXFlags.C = io.ZXtap.loadBlock(registers.A, registers.IX, registers.DE)
+            else:
+                ZXFlags.C = 1
+            sp = registers.SP
+            registers.SP = (sp + 2) & 0xFFFF
+            registers.PC = io.ZXmem[inc16(sp)] << 8 | io.ZXmem[sp]
+        else:
+            pass
 
     @instruction([(0x76, ())], 0, "HALT", 4)
     def halt(instruction, registers):

@@ -177,9 +177,60 @@ class ay38912(object):
 
         return res
 
+class TAPfile(object):
+    # https://k1.spdns.de/Develop/Projects/zasm/Info/TZX%20format.html
+    # https://sinclair.wiki.zxnet.co.uk/wiki/TAP_format
+
+    _filehandle = None
+    _isTzx = False
+
+    def __init__(self):
+        self._isTzx = False
+
+    def _readbyte(self):
+        return int.from_bytes(self._filehandle.read(1), byteorder='big', signed=False)   
+
+    def loadTap(self, filename):
+        ZXmem.writeROM1(0x556, 0) # Patch LOAD in ROM
+
+        self._filehandle = open(filename, "rb")
+        data = self._filehandle.read(7)
+        if (data == b"ZXTape!"):
+            self._isTzx = True
+            self._filehandle.read(3) # skip 0x1A, major, minor            
+        else:
+            self._filehandle.seek(0, 0)
+
+    def loadBlock(self, blocktype, start, size):
+        if (self._isTzx):            
+            id = self._readbyte()
+            while (id == 0x30): # Text description
+                ln = self._readbyte()
+                self._filehandle.read(ln)
+                id = self._readbyte()
+            if (id != 0x10):
+                print("TZX Error - Unknown id: " + str(id))
+                return False
+            self._filehandle.read(2) # skip pause
+
+        self._filehandle.read(2) # skip block size
+
+        if (blocktype != self._readbyte()):
+            print("TAP/TZX Error - Blocktype mismatch")
+            return False
+        
+        while (size > 0):
+            ZXmem[start] = self._readbyte()
+            start += 1
+            size -= 1
+        
+        self._filehandle.read(1) # skip checksum
+
+        return True
 
 ZXmem = mem()
 ZXay = ay38912()
+ZXtap = TAPfile()
 
 class IO(object):
     _addresses = []

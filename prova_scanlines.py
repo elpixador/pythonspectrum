@@ -402,6 +402,8 @@ readROM("roms/plus2-0.rom") #carreguem la rom sempre
 readROM1("roms/plus2-1.rom") #carreguem la rom sempre
 readSpectrumFile() #funció que càrrega qualsevol snapshoot de spectrum... en cas de no fer-ho arrenca la ROM per defecte
 
+io.ZXtap.loadTap("jocs/TAP/Navy Moves - Small Orange Case - Side 1.tzx")
+
 for i in range(6144): screenCache.append([-1, -1, -1]) # pattern, attribute, border
 for i in range(256):
    unFlash[0].append(i)
