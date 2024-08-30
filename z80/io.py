@@ -220,7 +220,7 @@ class TAPfile(object):
         f.close()
 
     def eject(self):
-        ZXmem.writeROM1(0x0556, self._oldSaBytes)
+        ZXmem.writeROM1(0x0556, self._oldLdBytes)
         ZXmem.writeROM1(0x04C2, self._oldSaBytes)
         self._filePos = 0
         self._fileName = ""
