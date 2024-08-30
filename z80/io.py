@@ -204,19 +204,25 @@ class TAPfile(object):
     def loadBlock(self, blocktype, start, size):
         if (self._isTzx):            
             id = self._readbyte()
-            while (id == 0x30): # Text description
+            while (id in (0x30, 0x31)): # Text description, Message block
+                if (id == 0x31): self._readbyte() # skip timeout
                 ln = self._readbyte()
-                self._filehandle.read(ln)
+                msg = self._filehandle.read(ln)
+                print("TAP/TZX Message: " + str(msg))
                 id = self._readbyte()
             if (id != 0x10):
                 print("TZX Error - Unknown id: " + str(id))
                 return False
             self._filehandle.read(2) # skip pause
 
-        self._filehandle.read(2) # skip block size
+        ln = self._readbyte() | (self._readbyte() << 8) # block size
+        
+        if (ln != size + 2):
+            print("TAP/TZX Error - Block Size mismatch")
+            return False
 
         if (blocktype != self._readbyte()):
-            print("TAP/TZX Error - Blocktype mismatch")
+            print("TAP/TZX Error - Block Type mismatch")
             return False
         
         while (size > 0):
