@@ -1002,6 +1002,19 @@ class InstructionSet():
             sp = registers.SP
             registers.SP = (sp + 2) & 0xFFFF
             registers.PC = io.ZXmem[inc16(sp)] << 8 | io.ZXmem[sp]
+
+        elif registers.PC == 0x04C2+1: # SA-BYTES - https://skoolkid.github.io/rom/asm/04C2.html
+            """
+            Input:
+                A 	+00 (header block) or +FF (data block)
+                DE 	Block length
+                IX 	Start address
+            """
+            io.ZXtap.saveBlock(registers.A, registers.IX, registers.DE)            
+            sp = registers.SP
+            registers.SP = (sp + 2) & 0xFFFF
+            registers.PC = io.ZXmem[inc16(sp)] << 8 | io.ZXmem[sp]
+
         else:
             pass
 

@@ -1,3 +1,5 @@
+import os
+
 ZXports = None # els poso aquí per a que siguin globals
 ZXRegisterR = 0
 
@@ -181,58 +183,111 @@ class TAPfile(object):
     # https://k1.spdns.de/Develop/Projects/zasm/Info/TZX%20format.html
     # https://sinclair.wiki.zxnet.co.uk/wiki/TAP_format
 
-    _filehandle = None
+    _fileName = ""
+    _filePos = 0
     _isTzx = False
+    _oldLdBytes = 0
+    _oldSaBytes = 0
 
     def __init__(self):
         self._isTzx = False
+        self._fileName = ""
+        self._filePos = 0
+        self._oldLdBytes = ZXmem[0x0556]
+        self._oldSaBytes = ZXmem[0x04C2]
 
-    def _readbyte(self):
-        return int.from_bytes(self._filehandle.read(1), byteorder='big', signed=False)   
+    def _readbyte(self, fileHandle):
+        return int.from_bytes(fileHandle.read(1), byteorder='big', signed=False)
 
     def loadTap(self, filename):
-        ZXmem.writeROM1(0x556, 0) # Patch LOAD in ROM
+        self._fileName = filename
+        ZXmem.writeROM1(0x0556, 0) # Patch LD-BYTES in ROM - https://skoolkid.github.io/rom/asm/0556.html
+        ZXmem.writeROM1(0x04C2, 0) # Patch SA-BYTES in ROM - https://skoolkid.github.io/rom/asm/04C2.html
 
-        self._filehandle = open(filename, "rb")
-        data = self._filehandle.read(7)
-        if (data == b"ZXTape!"):
-            self._isTzx = True
-            self._filehandle.read(3) # skip 0x1A, major, minor            
+        if os.path.isfile(self._fileName):
+            f = open(self._fileName, "rb")
+            data = f.read(7)
+            if (data == b"ZXTape!"):
+                self._isTzx = True
+                self._filePos = 10
+            else:
+                self._filePos = 0
         else:
-            self._filehandle.seek(0, 0)
+            f = open(self._fileName, "xb")
+            f.write(b"ZXTape!"+bytes((0x1a, 0x01, 0x0a)))
+            self._isTzx = True
+            self._filePos = 10
+        f.close()
+
+    def eject(self):
+        ZXmem.writeROM1(0x0556, self._oldSaBytes)
+        ZXmem.writeROM1(0x04C2, self._oldSaBytes)
+        self._filePos = 0
+        self._fileName = ""
+
+    def rewind(self):
+        self._filePos = 0
 
     def loadBlock(self, blocktype, start, size):
-        if (self._isTzx):            
-            id = self._readbyte()
+        f = open(self._fileName, "rb")
+        f.seek(self._filePos, 0)
+        if (self._isTzx):
+            id = self._readbyte(f)
             while (id in (0x30, 0x31)): # Text description, Message block
-                if (id == 0x31): self._readbyte() # skip timeout
-                ln = self._readbyte()
-                msg = self._filehandle.read(ln)
-                print("TAP/TZX Message: " + str(msg))
-                id = self._readbyte()
+                if (id == 0x31): self._readbyte(f) # skip timeout
+                ln = self._readbyte(f)
+                msg = f.read(ln)
+                print("TZX Message: " + str(msg))
+                id = self._readbyte(f)
             if (id != 0x10):
                 print("TZX Error - Unknown id: " + str(id))
+                f.close()
                 return False
-            self._filehandle.read(2) # skip pause
+            f.read(2) # skip pause
 
-        ln = self._readbyte() | (self._readbyte() << 8) # block size
-        
+        ln = self._readbyte(f) | (self._readbyte(f) << 8) # block size
+
         if (ln != size + 2):
             print("TAP/TZX Error - Block Size mismatch")
+            f.close()
             return False
 
-        if (blocktype != self._readbyte()):
+        if (blocktype != self._readbyte(f)):
             print("TAP/TZX Error - Block Type mismatch")
+            f.close()
             return False
-        
+
         while (size > 0):
-            ZXmem[start] = self._readbyte()
+            b = self._readbyte(f)
+            ZXmem[start] = b
+            blocktype ^= b
             start += 1
             size -= 1
-        
-        self._filehandle.read(1) # skip checksum
 
+        b = self._readbyte(f) # checksum
+        if (blocktype != b):
+            print("TAP/TZX Error - Checksum mismatch")
+            f.close()
+            return False
+
+        self._filePos = f.tell()
+        f.close()
         return True
+    
+    def saveBlock(self, blocktype, start, size):
+        f = open(self._fileName, "ab")
+        ln = size + 2
+        if self._isTzx:
+            f.write(bytes(bytearray([0x10, 0x5C, 0x59]))) # ID10, pause
+        f.write(bytes(bytearray([ln & 0xFF, ln >> 8, blocktype]))) # length, blocktype
+        while (size > 0):
+            b = ZXmem[start]
+            f.write(bytes(bytearray([b])))
+            blocktype ^= b
+            start += 1
+            size -= 1
+        f.write(bytes(bytearray([blocktype]))) # checksum
+        f.close()
 
 ZXmem = mem()
 ZXay = ay38912()
