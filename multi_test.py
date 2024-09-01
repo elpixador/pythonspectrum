@@ -645,133 +645,133 @@ class AudioInterface():
         self.send_audio(-1)
         self.thread.join()
        
+if __name__ == "__main__":
+    multiprocessing.set_start_method('spawn')
+    ZXplay = AudioInterface()
+    ZXplay.start()
 
-ZXplay = AudioInterface()
-ZXplay.start()
+    # INICI
+    print("Platform is: ", platform.system())
 
-# INICI
-print("Platform is: ", platform.system())
-
-APPNAME = "Pythonspectrum"
-APPVERSION = "1.0"
-ZX_RES = ZXWIDTH, ZXHEIGHT = 376, 312 #ressolució original + borders
-
-
-# Initialize the Z80 machine
-mach = Z80()
-#readROM("./jocs/spectrum.rom")
-readROM("roms/plus2-0.rom")
-readROM1("roms/plus2-1.rom")
-
-#inicialitza pantalla
-for i in range(6144): screenCache.append([-1, -1, -1]) # pattern, attribute, border
-for i in range(256):
-   unFlash[0].append(i)
-   if (i & 0x80): unFlash[1].append((i & 0xC0) | ((i & 0x38) >> 3) | ((i & 0x07) << 3))
-   else: unFlash[1].append(i)
-pygame.init()
-
-main_screen = Screen()
-# Set up the ZX Spectrum screen surface
-zx_screen = pygame.Surface(ZX_RES) 
+    APPNAME = "Pythonspectrum"
+    APPVERSION = "1.0"
+    ZX_RES = ZXWIDTH, ZXHEIGHT = 376, 312 #ressolució original + borders
 
 
+    # Initialize the Z80 machine
+    mach = Z80()
+    #readROM("./jocs/spectrum.rom")
+    readROM("roms/plus2-0.rom")
+    readROM1("roms/plus2-1.rom")
 
-# Initialize Pygame and the clock
-clock = pygame.time.Clock()
-clock.tick(50)
+    #inicialitza pantalla
+    for i in range(6144): screenCache.append([-1, -1, -1]) # pattern, attribute, border
+    for i in range(256):
+        unFlash[0].append(i)
+        if (i & 0x80): unFlash[1].append((i & 0xC0) | ((i & 0x38) >> 3) | ((i & 0x07) << 3))
+        else: unFlash[1].append(i)
+    pygame.init()
 
-conta = 0
-cicles = 0
-audioword = 0
-pausa = False
+    main_screen = Screen()
+    # Set up the ZX Spectrum screen surface
+    zx_screen = pygame.Surface(ZX_RES) 
 
 
-# Main loop
-while True:
-   
-  #print ('tick={}, fps={}'.format(clock.tick(60), clock.get_fps()))
-   if (not pausa):
-    conta = conta +1
 
-    #gestió del flash
-   if ((conta & 0b00011111) == 0):
-            flashReversed = not flashReversed
-           
+    # Initialize Pygame and the clock
+    clock = pygame.time.Clock()
+    clock.tick(50)
 
-   for y in range(312):
-        cicles += 224
-        #cicles += 248
-        cicles = mach.step_instruction(cicles)
-        ZXplay.send_audio(audioword)        
-        
-        renderline(y)
-        
-   pygame.display.flip()      
-   mach.interrupt()
-   main_screen.draw_screen(zx_screen)
-   main_screen.ui_manager.update(0)
-   main_screen.ui_manager.draw_ui(main_screen.screen) # type: ignore
+    conta = 0
+    cicles = 0
+    audioword = 0
+    pausa = False
 
-   for event in pygame.event.get():
-        match event.type:
-            case pygame.KEYDOWN:
-                match event.scancode:
-                    case 70: #grabar pantalla 'Impr'
-                        screen_shoot()
-                    case 71: #grabar video 'BLQ/desp'
-                        pass
-                    case 72: #Pausa 'Pausa/Intr'
-                        if(pausa==False):
-                            pausa = True
-                        else:
-                            pausa = False
-                        
+
+    # Main loop
+    while True:
+    
+        #print ('tick={}, fps={}'.format(clock.tick(60), clock.get_fps()))
+        if (not pausa):
+            conta = conta +1
+
+            #gestió del flash
+            if ((conta & 0b00011111) == 0):
+                flashReversed = not flashReversed
                     
-                    case 85: #togle scale '*'
-                        main_screen.scale_up()
-                        main_screen.init_gui()
-                    case 41: #Abrir fichero 'ESC'
-                        load_game()
 
-                mach._iomap.keypress(event.scancode)
-            case pygame.KEYUP:
-                mach._iomap.keyrelease(event.scancode)
-            case pygame.QUIT:
-                quit_app()
-            case pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
-                readSpectrumFile(create_resource_path(event.text))
-            case pygame_gui.UI_BUTTON_PRESSED:
-                match event.ui_element:
-                    case main_screen.b_load_game:
-                        load_game()
+            for y in range(312):
+                cicles += 224
+                #cicles += 248
+                cicles = mach.step_instruction(cicles)
+                ZXplay.send_audio(audioword)                    
+                renderline(y)
+                    
+            pygame.display.flip()      
+            mach.interrupt()
+            main_screen.draw_screen(zx_screen)
+            main_screen.ui_manager.update(0)
+            main_screen.ui_manager.draw_ui(main_screen.screen) # type: ignore
 
-            case pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
-                print(event.text) # to be removed
-                match event.text.split()[0]: # matching first word only
-                    case "Scale":
-                        main_screen.scale_up()
-                        main_screen.init_gui()
-                    case "Quit":
-                       quit_app()
-                    case "Reset":
-                        mach.registers.reset()
-                        io.ZXmem.reset()
-                        io.ZXay.reset()
-                    case "Screenshot":
-                        screen_shoot()
-                    case "Freeze":
-                        if(pausa==False):
-                            pausa = True
-                        else:
-                            pausa = False
-                    case "Un/Mute":
-                        ZXplay.mute = not ZXplay.mute
-                        print(ZXplay.mute)
-                        pass
-                    case "About":
-                        about_window = AboutWindow(((10  * main_screen.get_scale(), 50 * main_screen.get_scale()), (280 * main_screen.get_scale(), 190 * main_screen.get_scale())),main_screen.ui_manager)
+            for event in pygame.event.get():
+                match event.type:
+                    case pygame.KEYDOWN:
+                        match event.scancode:
+                            case 70: #grabar pantalla 'Impr'
+                                screen_shoot()
+                            case 71: #grabar video 'BLQ/desp'
+                                pass
+                            case 72: #Pausa 'Pausa/Intr'
+                                if(pausa==False):
+                                    pausa = True
+                                else:
+                                    pausa = False
+                                
+                            
+                            case 85: #togle scale '*'
+                                main_screen.scale_up()
+                                main_screen.init_gui()
+                            case 41: #Abrir fichero 'ESC'
+                                load_game()
 
-                main_screen.b_dropdown.rebuild()
-             
-        main_screen.ui_manager.process_events(event)
+                        mach._iomap.keypress(event.scancode)
+                    case pygame.KEYUP:
+                        mach._iomap.keyrelease(event.scancode)
+                    case pygame.QUIT:
+                        quit_app()
+                    case pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
+                        readSpectrumFile(create_resource_path(event.text))
+                    case pygame_gui.UI_BUTTON_PRESSED:
+                        match event.ui_element:
+                            case main_screen.b_load_game:
+                                load_game()
+
+                    case pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+                        print(event.text) # to be removed
+                        match event.text.split()[0]: # matching first word only
+                            case "Scale":
+                                main_screen.scale_up()
+                                main_screen.init_gui()
+                            case "Quit":
+                                quit_app()
+                            case "Reset":
+                                mach.registers.reset()
+                                io.ZXmem.reset()
+                                io.ZXay.reset()
+                            case "Screenshot":
+                                screen_shoot()
+                            case "Freeze":
+                                if(pausa==False):
+                                    pausa = True
+                                else:
+                                    pausa = False
+                            case "Un/Mute":
+                                ZXplay.mute = not ZXplay.mute
+                                print(ZXplay.mute)
+                                pass
+                            case "About":
+                                about_window = AboutWindow(((10  * main_screen.get_scale(), 50 * main_screen.get_scale()), (280 * main_screen.get_scale(), 190 * main_screen.get_scale())),main_screen.ui_manager)
+
+                        main_screen.b_dropdown.rebuild()
+                    
+                main_screen.ui_manager.process_events(event)
