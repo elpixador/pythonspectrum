@@ -1,4 +1,4 @@
-import sys, os, threading, platform
+import sys, os, platform, multiprocessing
 from typing import Optional
 
 import pygame
@@ -598,31 +598,15 @@ def load_game():
                             allowed_suffixes={""})
 
 
+def threadplay(cua):
+    bufferlen = 32
+    buffaudio = numpy.zeros((bufferlen, 1), dtype = numpy.int16)
+    sample_rate = 12025 #freqüencia de captura
+    audiocount = 0
+    stream = sd.RawOutputStream(sample_rate, channels=1, dtype=numpy.int16)
+    stream.start()
 
-
-class AudioInterface():
-    def __init__(self): #initialize audio
-        self.mute = False
-        self.playAudio = False
-        self.bufferlen = 32
-        #self.bufferlen = 64 es per la sol·lució que no es comentada
-        self.buffaudio = numpy.zeros((self.bufferlen, 1), dtype = numpy.int16)
-        self.sample_rate = 12025 #freqüencia de captura
-        self.stream = sd.RawOutputStream(self.sample_rate, channels=1, dtype=numpy.int16)
-        self.audio_buffer = queue.Queue(maxsize = self.bufferlen)
-        self.thread = None
-
-    def start(self):
-        self.stream.start()
-        self.playAudio = True
-        self.thread = threading.Thread(target=self.play)
-        self.thread.start()
-
-    def send_audio(self, indata):
-        self.audio_buffer.put(indata)
-      
-    def play(self):
-        while self.playAudio:
+    while True:
             #aquest sería l'ideal però te un gap al reproduïr el buffer    i no es penja al sortir 
             # audio_data = []
             # while not self.audio_buffer.empty():
@@ -630,19 +614,35 @@ class AudioInterface():
             # if (self.mute == False):
             #     self.stream.write(numpy.asarray(audio_data, dtype=numpy.int16))
 
-            #aquest codi serviría per evitar el gap de canvi de buffer més ràpid però inexplicaplement es penja al sortir per no poder tancar el thread     
-            audiocount = 0
-            while (audiocount < self.bufferlen) and (self.playAudio):
-                self.buffaudio[audiocount] = self.audio_buffer.get() + io.ZXay.calc()
-                audiocount += 1
+            #aquest codi serviría per evitar el gap de canvi de buffer més ràpid però inexplicaplement es penja al sortir per no poder tancar el thread
+            dada = cua.get()
+            if (dada == -1): break
 
-            if (self.mute == False):
-                self.stream.write(self.buffaudio)
-       
+            buffaudio[audiocount] = dada # + io.ZXay.calc()
+            audiocount += 1
+
+            if (audiocount >= bufferlen):
+                stream.write(buffaudio)
+                audiocount = 0
+
+    stream.close()
+
+
+class AudioInterface():
+    def __init__(self): #initialize audio
+        self.audio_queue = multiprocessing.SimpleQueue()
+        self.thread = None
+
+    def start(self):
+        #self.thread = threading.Thread(target=self.play)
+        self.thread = multiprocessing.Process(target=threadplay, args=(self.audio_queue,))
+        self.thread.start()
+
+    def send_audio(self, indata):
+        self.audio_queue.put(indata)
+             
     def stop(self):
-        self.playAudio = False
-        self.send_audio(0)
-        self.stream.stop()
+        self.send_audio(-1)
         self.thread.join()
        
 
