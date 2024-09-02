@@ -630,11 +630,12 @@ def threadplay(cua):
 
 class AudioInterface():
     def __init__(self): #initialize audio
-        self.audio_queue = multiprocessing.SimpleQueue()
+        self.audio_queue = None
         self.thread = None
 
     def start(self):
         #self.thread = threading.Thread(target=self.play)
+        self.audio_queue = multiprocessing.Queue(1024)
         self.thread = multiprocessing.Process(target=threadplay, args=(self.audio_queue,))
         self.thread.start()
 
@@ -644,6 +645,7 @@ class AudioInterface():
     def stop(self):
         self.send_audio(-1)
         self.thread.join()
+        self.audio_queue.close()
        
 if __name__ == "__main__":
     multiprocessing.set_start_method('spawn')
