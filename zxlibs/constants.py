@@ -1,7 +1,6 @@
 APPNAME = "Pythonspectrum"
 APPVERSION = "1.0"
 ZX_RES = ZXWIDTH, ZXHEIGHT = 376, 312
-ROM = "jocs/spectrum.rom"
 
 colorTable = (  # https://en.wikipedia.org/wiki/ZX_Spectrum_graphic_modes#Colour_palette
     (

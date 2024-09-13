@@ -1,6 +1,5 @@
 import pygame
 import sys
-from .constants import ROM
 
 #
 ## Z80 CPU Emulator
@@ -136,114 +135,65 @@ class Z80(io.Interruptable):
     def interrupt(self):
         self._interrupted = True
 
-    def step_instruction(self):
-        ins = False
-        pc = dict(self.registers)["PC"]
+    def step_instruction(self, cicles):
+        while cicles > 0:
+            ins = False
+            pc = dict(self.registers)["PC"]
 
-        if self._interrupted and self.registers.IFF:
-            self._interrupted = False
-            if self.registers.HALT:
-                self.registers.HALT = False
-                self.registers.PC = util.inc16(pc)
-            if self.registers.IM == 1:
-                # print ("!!! Interrupt Mode 1 !!!")
-                ins, args = self.instructions << 0xFF
-            elif self.registers.IM == 2:
-                # print ("!!! Interrupt Mode 2 !!!")
-                imadr = (self.registers.I << 8) | 0xFF
-                ins, args = self.instructions << 0xCD
-                ins, args = self.instructions << self._memory[imadr & 0xFFFF]
-                ins, args = self.instructions << self._memory[(imadr + 1) & 0xFFFF]
-        else:
-            while not ins:
-                ins, args = self.instructions << self._memory[pc]
-                self.registers.PC = pc = (pc + 1) & 0xFFFF
-            # print("{0:X} : {1} ".format(pc, ins.assembler(args)))
-
-        ins.execute(args)
-
-        return ins.tstates
-
-
-class Worker:
-    def __init__(self):
-        self.stop_event = threading.Event()
-        self.thread = None
-
-    def loop(self):
-        global bufferlen, audiocount, buffaudio, audioword
-        ciclesAudio = 0
-        ciclesScan = 0
-        cicles = 0
-        y = 0
-        while not self.stop_event.is_set():
-
-            cicles = mach.step_instruction()
-
-            ciclesAudio -= cicles
-            ciclesScan -= cicles
-
-            if ciclesAudio <= 0:
-                ciclesAudio += 158
-                if audiocount == bufferlen:
-                    audiocount = 0
+            if self._interrupted and self.registers.IFF:
+                self._interrupted = False
+                if self.registers.HALT:
+                   self.registers.HALT = False
+                   self.registers.PC = util.inc16(pc)
+                if self.registers.IM == 2:
+                    imadr = (self.registers.I << 8) | 0xFF
+                    ins, args = self.instructions << 0xCD
+                    ins, args = self.instructions << self._memory[imadr & 0xFFFF]
+                    ins, args = self.instructions << self._memory[(imadr+1) & 0xFFFF]
                 else:
-                    buffaudio[audiocount] = audioword
-                    audiocount += 1
+                    ins, args = self.instructions << 0xFF
+            else:
+                while not ins:
+                    ins, args = self.instructions << self._memory[pc]
+                    self.registers.PC = pc = (pc + 1) & 0xFFFF
+                #print( "{0:X} : {1} ".format(pc, ins.assembler(args)))
+                #with open("sortida.txt", 'a') as file1: file1.write("{0:04X} : {1}\n".format(pc, ins.assembler(args)))
+        
+            ins.execute(args)
 
-            if ciclesScan <= 0:
-                ciclesScan += 224
-                renderline(y)
-                y += 1
-                if y == 312:
-                    y = 0
-                    mach.interrupt()
-                    clock.tick(50)
-
-    def start(self):
-        if self.thread is not None and self.thread.is_alive():
-            print("Worker is already running")
-            return
-
-        self.stop_event.clear()
-        self.thread = threading.Thread(target=self.loop, daemon=True)
-        self.thread.start()
-        print("Worker started")
-
-    def stop(self):
-        self.stop_event.set()
-        if self.thread is not None:
-            self.thread.join()
-        print("Worker stopped")
-
-    def toggle(self):
-        if self.thread is not None and self.thread.is_alive():
-            self.stop()
-            print("Worker stopped")
-        else:
-            self.start()
-            print("Worker started")
+            cicles -= ins.tstates
+        return cicles
 
 
 # Funcions
 def quit_app():
     print("Emulator quitting...")
-    worker.stop()
     pygame.quit()
     sys.exit()
 
 
-def readROM():
-    f = open(ROM, mode="rb")
-    dir = 0
-    data = f.read(1)
-    while data:
-        io.ZXmem.writeROM(dir, int.from_bytes(data, byteorder="big", signed=False))
-        dir = dir + 1
-        data = f.read(1)
-    f.close()
-    print("ROM cargada")
+#tractament d'arxius
+def readROM(aFilename):
+   f = open(aFilename, mode="rb")
+   dir = 0
+   data = f.read(1)
+   while (data):
+      io.ZXmem.writeROM(dir, int.from_bytes(data, byteorder='big', signed=False))
+      dir = dir + 1
+      data = f.read(1)
+   f.close()
+   print("ROM cargada")
 
+def readROM1(aFilename):
+   f = open(aFilename, mode="rb")
+   dir = 0
+   data = f.read(1)
+   while (data):
+      io.ZXmem.writeROM1(dir, int.from_bytes(data, byteorder='big', signed=False))
+      dir = dir + 1
+      data = f.read(1)
+   f.close()
+   print("ROM cargada")
 
 def byteFromFile(aFile):
     data = aFile.read(1)
@@ -287,7 +237,6 @@ def memFromPackedFile(aFile, aInici, aLongitud):
 def readSpectrumFile(fichero):
     global nborder
     if fichero:
-        worker.stop()
 
         extensio = os.path.splitext(fichero)[1]
         nom = os.path.basename(fichero)
@@ -440,77 +389,8 @@ def readSpectrumFile(fichero):
             f.close()
 
     renderscreenFull()
-    worker.start()
 
 
-def decodecolor(atribut):
-    # http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/screen-memory-layout
-    bright = (atribut & 0b01000000) >> 6
-    flash = (atribut & 0b10000000) >> 7
-
-    tinta = colorTable[bright][atribut & 0b00000111]
-    paper = colorTable[bright][(atribut & 0b00111000) >> 3]
-
-    if flash & flashReversed:
-        return (paper, tinta)
-    else:
-        return (tinta, paper)
-
-
-def renderline(screenY):
-    # (376, 312)
-    global main_screen
-    if (screenY < 60) or (screenY > 251):
-        if screenCache[screenY][3] != main_screen.bcolor:
-            pygame.draw.line(
-                zx_screen,
-                colorTable[0][main_screen.bcolor],
-                (0, screenY),
-                (375, screenY),
-            )
-            screenCache[screenY][3] = main_screen.bcolor
-    else:
-        y = screenY - 60
-        adr_attributs = 22528 + ((y >> 3) * 32)
-        # 000 tt zzz yyy xxxxx
-        adr_pattern = 16384 + (
-            ((y & 0b11000000) | ((y & 0b111) << 3) | (y & 0b111000) >> 3) << 5
-        )
-        if screenCache[screenY][3] != main_screen.bcolor:
-            border = colorTable[0][main_screen.bcolor]
-            pygame.draw.line(zx_screen, border, (0, screenY), (59, screenY))
-            pygame.draw.line(zx_screen, border, (316, screenY), (375, screenY))
-            screenCache[screenY][3] = main_screen.bcolor
-        x = 60
-        for col in range(32):
-            ink, paper = decodecolor(io.ZXmem[adr_attributs])
-            m = io.ZXmem[adr_pattern]
-            cc = screenCache[adr_pattern & 0x1FFF]
-            if (cc[0] != m) or (cc[1] != ink) or (cc[2] != paper):
-                cc[0] = m
-                cc[1] = ink
-                cc[2] = paper
-                b = 0b10000000
-                while b:
-                    if m & b:
-                        zx_screen.set_at((x, screenY), ink)
-                    else:
-                        zx_screen.set_at((x, screenY), paper)
-                    x += 1
-                    b >>= 1
-            else:
-                x += 8
-            adr_pattern += 1
-            adr_attributs += 1
-
-
-def renderscreenFull():
-    for y in range(len(screenCache)):
-        cc = screenCache[y]
-        for n in range(len(cc)):
-            cc[n] = -1
-    for y in range(312):
-        renderline(y)
 
 
 def quit_app():
