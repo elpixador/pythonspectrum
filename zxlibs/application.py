@@ -2,61 +2,7 @@ import pygame
 # PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
 import pygame_gui
 from .constants import ZX_RES, APPNAME, APPVERSION
-from .sound import AudioInterface
 from .other import *
-
-class Spectrum:
-    def __init__(self):
-        self.screen = ZXScreen((ZX_RES[0], ZX_RES[1]))
-        self.audio = AudioInterface()  # this is where the audio stuff will happen
-        self.IO = None  # TODO:
-        self.cpu = Z80()
-        self.flashCount = 0
-        self.flashReversed = False
-        self.cicles = 0
-        self.is_running = True
-
-    def get_surface(self):
-        return self.screen
-    
-    def run_frame(self):
-        #gestió del flash
-        if ((self.flashCount & 0b00011111) == 0):
-            self.flashReversed = not self.flashReversed
-        self.flashCount += 1
-
-        for y in range(312):
-            self.cicles += 224
-            #cicles += 248
-            self.cicles = self.cpu.step_instruction(self.cicles)
-
-            if (self.audio.playAudio):
-                #buffer d'audio
-                if (self.audio.audiocount == self.audio.bufferlen):
-                        self.audio.audiocount = 0
-                        self.audio.stream.write(self.audio.buffaudio) #comentar en cas d'anar lent                
-                else:
-                        self.audio.buffaudio[self.audio.audiocount] = self.audio.audioword # + io.ZXay.calc()
-                        self.audio.audiocount += 1
-                    
-            self.screen.renderline(y)
-
-        self.cpu.interrupt()
-
-
-
-class ZXScreen(pygame.Surface):
-    def __new__(cls, size):
-        # creates a new pygame.Surface object
-        return super(ZXScreen, cls).__new__(cls)
-
-    def __init__(self, size):
-        super().__init__(size)
-        self.screenCache = []
-        for i in range(6144):
-            self.screenCache.append([-1, -1, -1, -1])  # attr, ink, paper, border
-        self.flashReversed = False
-
 
 class AppScreen:
     def __init__(self):
@@ -124,77 +70,6 @@ class AppScreen:
             banda, (self.screen.get_width(), self.bbar_height)
         )
         self.screen.blit(banda, (0, 0))
-
-    def decodecolor(atribut):
-        # http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/screen-memory-layout
-        bright = (atribut & 0b01000000) >> 6
-        flash = (atribut & 0b10000000) >> 7
-
-        tinta = colorTable[bright][atribut & 0b00000111]
-        paper = colorTable[bright][(atribut & 0b00111000) >> 3]
-
-        if flash & flashReversed:
-            return (paper, tinta)
-        else:
-            return (tinta, paper)
-
-
-    def renderline(screenY):
-        # (376, 312)
-        global main_screen
-        if (screenY < 60) or (screenY > 251):
-            if screenCache[screenY][3] != main_screen.bcolor:
-                pygame.draw.line(
-                    zx_screen,
-                    colorTable[0][main_screen.bcolor],
-                    (0, screenY),
-                    (375, screenY),
-                )
-                screenCache[screenY][3] = main_screen.bcolor
-        else:
-            y = screenY - 60
-            adr_attributs = 22528 + ((y >> 3) * 32)
-            # 000 tt zzz yyy xxxxx
-            adr_pattern = 16384 + (
-                ((y & 0b11000000) | ((y & 0b111) << 3) | (y & 0b111000) >> 3) << 5
-            )
-            if screenCache[screenY][3] != main_screen.bcolor:
-                border = colorTable[0][main_screen.bcolor]
-                pygame.draw.line(zx_screen, border, (0, screenY), (59, screenY))
-                pygame.draw.line(zx_screen, border, (316, screenY), (375, screenY))
-                screenCache[screenY][3] = main_screen.bcolor
-            x = 60
-            for col in range(32):
-                ink, paper = decodecolor(io.ZXmem[adr_attributs])
-                m = io.ZXmem[adr_pattern]
-                cc = screenCache[adr_pattern & 0x1FFF]
-                if (cc[0] != m) or (cc[1] != ink) or (cc[2] != paper):
-                    cc[0] = m
-                    cc[1] = ink
-                    cc[2] = paper
-                    b = 0b10000000
-                    while b:
-                        if m & b:
-                            zx_screen.set_at((x, screenY), ink)
-                        else:
-                            zx_screen.set_at((x, screenY), paper)
-                        x += 1
-                        b >>= 1
-                else:
-                    x += 8
-                adr_pattern += 1
-                adr_attributs += 1
-
-
-    def renderscreenFull():
-        for y in range(len(screenCache)):
-            cc = screenCache[y]
-            for n in range(len(cc)):
-                cc[n] = -1
-        for y in range(312):
-            renderline(y)
-
-
 
 class UILayer(pygame_gui.UIManager):
     def __init__(self, dimension):

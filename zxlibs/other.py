@@ -390,10 +390,3 @@ def readSpectrumFile(fichero):
 
     renderscreenFull()
 
-
-
-
-def quit_app():
-    print("Emulator quitting...")
-    pygame.quit()
-    sys.exit()

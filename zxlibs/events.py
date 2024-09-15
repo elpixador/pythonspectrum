@@ -1,5 +1,6 @@
 import pygame, pygame_gui
-from .zxscreen import *
+from .spectrum import *
+from .application import *
 
 def check_events(event,app,spectrum):
     match event.type:

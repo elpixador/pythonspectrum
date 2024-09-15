@@ -1,4 +1,4 @@
-import sys, pygame
+import pygame
 
 # internal modules
 import zxlibs
@@ -12,15 +12,11 @@ app = AppScreen()
 
 # Initialize the ZXSpectrum
 spectrum = Spectrum()
-#readROM("./jocs/spectrum.rom")
-zxlibs.readROM("roms/plus2-0.rom")
-zxlibs.readROM1("roms/plus2-1.rom")
+spectrum.readROM()
 
 # setting the clock and running flag
 clock = pygame.time.Clock()
 clock.tick(50)
-
-pausa = False
 
 # Main loop
 while app.is_running:
@@ -33,7 +29,8 @@ while app.is_running:
         # mach.interrupt()
         # app.draw_screen(spectrum.get_surface())
 
-        spectrum.run_frame()
+        #spectrum.run_frame()
+        pass
 
 
     app.fill_screen()  # DEBUG_INFO to be removed
@@ -41,4 +38,4 @@ while app.is_running:
     app.ui.draw_ui(app.get_screen())
     pygame.display.flip()
 
-sys.exit() # TODO: make it nicer that this
+zxlibs.quit_app()
