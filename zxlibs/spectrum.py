@@ -1,22 +1,24 @@
 import pygame
 # PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
-from .constants import ZX_RES, APPNAME, APPVERSION, rompath, romfile
+from .constants import ZX_RES, rompath, romfile
+from .constants import pygameKeys, keysSpectrum
 from .sound import AudioInterface
 ## Z80 CPU Emulator / https://github.com/cburbridge/z80
 from z80 import util, io, registers, instructions
 from .other import *
 
+
 class Spectrum:
     def __init__(self):
         self.plusmode = True # True = Spectrum 128 / False = ZX Spectrum 48k  
-        self.screen = ZXScreen((ZX_RES[0], ZX_RES[1]))
+        self.screen = ZXScreen(ZX_RES)
         self.audio = AudioInterface()  # this is where the audio stuff will happen
         self.memory = io.mem()
-        self.IO = io.IO()  # TODO:
         self.cpu = Z80()
+        self.ports = portFE()
         self.flashCount = 0
         self.flashReversed = False
-        self.cicles = 0
+        self.cicles = 0 
         self.is_running = True
 
     # Load ROM
@@ -124,3 +126,55 @@ class Z80(io.Interruptable):
                 # with open("sortida.txt", 'a') as file1: file1.write("{0:04X} : {1}\n".format(pc, ins.assembler(args)))
 
             ins.execute(args)
+
+            cicles -= ins.tstates
+        return cicles
+
+
+class portFE(io.IO):
+    def __init__(self):
+        self.nborder = None
+        # audioword = 0x0000
+        self.audioword = None
+
+    def keypress(self, scancode):
+        if scancode in pygameKeys:
+            k = pygameKeys[scancode]
+            keysSpectrum[k[0]] = keysSpectrum[k[0]] & (k[1] ^ 0xFF)
+
+    def keyrelease(self, scancode):
+        if scancode in pygameKeys:
+            k = pygameKeys[scancode]
+            keysSpectrum[k[0]] = keysSpectrum[k[0]] | k[1]
+
+    def read(self, address):
+        adr = address >> 8
+        res = 0xBF
+        b = 0x80
+        while b:
+            if (adr & b) == 0:
+                res &= keysSpectrum[b ^ 0xFF]
+            b >>= 1
+        return res
+
+    def write(self, address, value):
+        # Bit   7   6   5   4   3   2   1   0
+        #  +-------------------------------+
+        #  |   |   |   | E | M |   Border  |
+        #  +-------------------------------+
+
+        # print((i[1] & 0b00010000) >> 4) #filtrem el bit de audio output per generar el so
+        # cal cridar la funció que toca per el so
+
+        # new values out volume
+        if (value & 0b00011000) == 24:
+            self.audioword = 29569
+        elif (value & 0b00010000) == 16:
+            self.audioword = 28445
+        elif (value & 0b00001000) == 8:
+            self.audioword = 3113
+        elif (value & 0b00000000) == 0:
+            self.audioword = 0
+
+        # gestió del color del borde
+        main_screen.set_bcolor(value & 0b00000111)

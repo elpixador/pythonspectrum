@@ -1,4 +1,5 @@
 import pygame, pygame_gui
+from pygame_gui.core.utility import create_resource_path
 from .spectrum import *
 from .application import *
 
@@ -23,7 +24,7 @@ def check_events(event,app,spectrum):
                     file_requester(app, app.ui)
 
         case pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
-            readSpectrumFile(create_resource_path(event.text))
+            readSpectrumFile(spectrum, create_resource_path(event.text))
 
         case pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
             print(event.text) # DEBUG_INFO to be removed
