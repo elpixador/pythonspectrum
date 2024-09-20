@@ -12,7 +12,9 @@ app = AppScreen()
 
 # Initialize the ZXSpectrum
 spectrum = Spectrum()
-spectrum.readROM()
+spectrum.plusmode = True
+spectrum.readROM('plus2-0.rom')
+#spectrum.readROM()
 
 # setting the clock and running flag
 clock = pygame.time.Clock()
@@ -27,13 +29,11 @@ while app.is_running:
 
     if spectrum.is_running:
         # mach.interrupt()
-        # app.draw_screen(spectrum.get_surface())
-
-        #spectrum.run_frame()
-        pass
+        spectrum.run_frame()
+        app.draw_screen(spectrum.get_surface())
 
 
-    app.fill_screen()  # DEBUG_INFO to be removed
+    #app.fill_screen()  # DEBUG_INFO to be removed
     app.ui.update(0)
     app.ui.draw_ui(app.get_screen())
     pygame.display.flip()

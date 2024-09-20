@@ -6,10 +6,10 @@ from .application import *
 def check_events(event,app,spectrum):
     match event.type:
         case pygame.KEYDOWN:
-            mach._iomap.keypress(event.scancode)
+            spectrum.cpu._iomap.keypress(event.scancode)
 
         case pygame.KEYUP:
-            mach._iomap.keyrelease(event.scancode)
+            spectrum.cpu._iomap.keyrelease(event.scancode)
 
         case pygame.QUIT:
             app.is_running = False
@@ -33,7 +33,7 @@ def check_events(event,app,spectrum):
                     # we trigger an exit event
                     pygame.event.post(pygame.event.Event(pygame.QUIT))
                 case "Reset":
-                    mach.registers.reset()
+                    spectrum.cpu.registers.reset()
 
                 case "Screenshot":
                     pygame.image.save(spectrum.get_surface(), "screenshot.png")

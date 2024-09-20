@@ -214,5 +214,4 @@ def readSpectrumFile(spectrum, fichero):
             byteFromFile(f)  # status word high
             memFromFile(f)
             f.close()
-
-    renderscreenFull()
+    spectrum.screen.renderscreenFull(spectrum.memory)
