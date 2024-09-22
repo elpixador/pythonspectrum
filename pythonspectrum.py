@@ -13,8 +13,7 @@ app = AppScreen()
 # Initialize the ZXSpectrum
 spectrum = Spectrum()
 spectrum.plusmode = True
-spectrum.readROM('plus2-0.rom')
-#spectrum.readROM()
+spectrum.readROM()
 
 # setting the clock and running flag
 clock = pygame.time.Clock()

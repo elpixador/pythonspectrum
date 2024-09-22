@@ -1,6 +1,6 @@
 import pygame
 # PyGame_GUI https://pygame-gui.readthedocs.io/en/latest/quick_start.html
-from .constants import ZX_RES, rompath, romfile, colorTable
+from .constants import ZX_RES, rompath, romfile48k, romfile128k, colorTable
 from .sound import AudioInterface
 ## Z80 CPU Emulator / https://github.com/cburbridge/z80
 from z80 import util, io, registers, instructions
@@ -21,8 +21,13 @@ class Spectrum:
         self.is_running = True
 
     # Load ROM
-    def readROM(self, zxromfile=romfile):
-        # If no romfile is provided, use the default (48k)
+    def readROM(self): 
+        if self.plusmode == True: 
+            print("Mode 128k ON")
+            zxromfile = romfile128k
+        else: 
+            print("Mode 48k ON")
+            zxromfile = romfile48k
         zxromfile = rompath + "/" + zxromfile
         f = open(zxromfile, mode="rb")
         dir = 0
