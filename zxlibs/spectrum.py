@@ -21,33 +21,40 @@ class Spectrum:
         self.is_running = True
 
     # Load ROM
-    def readROM(self): 
-        if self.plusmode == True: 
-            print("Mode 128k ON")
-            zxromfile = romfile128k
-        else: 
-            print("Mode 48k ON")
-            zxromfile = romfile48k
-        zxromfile = rompath + "/" + zxromfile
-        f = open(zxromfile, mode="rb")
-        dir = 0
-        data = f.read(1)
-        while (data):
-            self.memory.writeROM(dir, int.from_bytes(data, byteorder='big', signed=False))
-            dir = dir + 1
-            data = f.read(1)
-        f.close()
-        if (self.plusmode == True):
-            zxromfile = zxromfile[::-1].replace('0', '1', 1)[::-1]
+    def readROM(self, custom=""):
+        try:
+            if self.plusmode == True: 
+                print("Mode: ZX Spectrum+")
+                if custom =="": zxromfile = romfile128k
+                else: zxromfile = custom
+            else: 
+                print("Mode: ZX Spectrum 48k")
+                if custom =="": zxromfile = romfile48k
+                else: zxromfile = custom
+            zxromfile = rompath + "/" + zxromfile
             f = open(zxromfile, mode="rb")
             dir = 0
             data = f.read(1)
             while (data):
-                self.memory.writeROM1(dir, int.from_bytes(data, byteorder='big', signed=False))
+                self.memory.writeROM(dir, int.from_bytes(data, byteorder='big', signed=False))
                 dir = dir + 1
                 data = f.read(1)
             f.close()
-        print("ROM loaded")
+            if (self.plusmode == True):
+                zxromfile = zxromfile[::-1].replace('0', '1', 1)[::-1]
+                f = open(zxromfile, mode="rb")
+                dir = 0
+                data = f.read(1)
+                while (data):
+                    self.memory.writeROM1(dir, int.from_bytes(data, byteorder='big', signed=False))
+                    dir = dir + 1
+                    data = f.read(1)
+                f.close()
+            print("ROM file:"+zxromfile)
+        except Exception:
+            print("\nERROR: ROM File "+ zxromfile +" cannot be found in " + rompath)
+            quit_app()
+
 
     def get_surface(self):
         return self.screen

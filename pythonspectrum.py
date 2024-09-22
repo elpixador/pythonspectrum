@@ -5,7 +5,7 @@ import zxlibs
 from zxlibs import AppScreen, Spectrum
 
 # INICI
-zxlibs.show_platform()
+zxlibs.init_terminal()
 
 # Initialize the app screen
 app = AppScreen()
@@ -13,7 +13,7 @@ app = AppScreen()
 # Initialize the ZXSpectrum
 spectrum = Spectrum()
 spectrum.plusmode = True
-spectrum.readROM()
+spectrum.readROM() # accepts a custom rom file as a parameter
 
 # setting the clock and running flag
 clock = pygame.time.Clock()
@@ -32,7 +32,6 @@ while app.is_running:
         app.draw_screen(spectrum.get_surface())
 
 
-    #app.fill_screen()  # DEBUG_INFO to be removed
     app.ui.update(0)
     app.ui.draw_ui(app.get_screen())
     pygame.display.flip()

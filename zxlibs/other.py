@@ -1,5 +1,5 @@
 import pygame
-import os, sys
+import os, sys, platform
 
 #
 ## Z80 CPU Emulator
@@ -13,9 +13,17 @@ from z80 import util, io, registers, instructions
 
 # Funcions
 def quit_app():
-    print("Emulator quitting...")
+    print("==========================")
+    print("Emulator quitting...\n")
     pygame.quit()
     sys.exit()
+
+
+def init_terminal():
+    print(chr(27) + "[2J") # clear terminal
+    print("PythonSpectrum starting...")
+    print("==========================")
+    print("Platform:", platform.system())
 
 
 # tractament d'arxius

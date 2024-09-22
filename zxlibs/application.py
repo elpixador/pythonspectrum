@@ -8,7 +8,6 @@ class AppScreen:
     def __init__(self):
         # basic initializations
         self.is_running = True
-        self.is_frozen = False
         pygame.init()
         # window title
         pygame.display.set_caption(APPNAME)
