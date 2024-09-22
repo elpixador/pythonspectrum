@@ -2,4 +2,4 @@ https://pgi-jcns.fz-juelich.de/portal/pages/using-c-from-python.html
 
 To compile a dll/so with gcc:
   Windows: gcc -shared -o library.dll library.c
-  Linux: gcc -fPIC -shared -o library.so library.c
+  Linux/Mac: gcc -fPIC -shared -o library.so library.c
