@@ -146,6 +146,7 @@ def readSpectrumFile(spectrum, fichero):
         elif (
             extensio.upper() == ".SNA"
         ):  # https://worldofspectrum.org/faq/reference/formats.htm
+            spectrum.memory.set48mode()
             spectrum.cpu.registers.I = byteFromFile(f)
             spectrum.cpu.registers.L_ = byteFromFile(f)
             spectrum.cpu.registers.H_ = byteFromFile(f)
@@ -184,6 +185,7 @@ def readSpectrumFile(spectrum, fichero):
         elif (
             extensio.upper() == ".SP"
         ):  # https://rk.nvg.ntnu.no/sinclair/faq/fileform.html#SP
+            spectrum.memory.set48mode()
             f.read(6)  # signatura i cacones
             spectrum.cpu.registers.C = byteFromFile(f)
             spectrum.cpu.registers.B = byteFromFile(f)
