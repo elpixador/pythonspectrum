@@ -400,7 +400,7 @@ def readSpectrumFile(fichero):
             mach.registers.I = byteFromFile(f)
             mach.registers.R = byteFromFile(f) & 0x7F
             b = byteFromFile(f) # Bordercolor etc
-            bordercolor = (b & 0b00001110 ) > 1
+            bordercolor = (b & 0b00001110) >> 1
             mach.registers.R = mach.registers.R | ((b & 0x01) << 7)
             isPacked = (b & 0b00100000) >> 5
             mach.registers.E = byteFromFile(f)
