@@ -82,6 +82,8 @@ def readSpectrumFile(spectrum, fichero):
         if (
             extensio.upper() == ".Z80"
         ):  # https://worldofspectrum.org/faq/reference/z80format.htm
+            
+
             f.seek(0, 2)
             sz = f.tell()
             f.seek(0, 0)
@@ -95,17 +97,16 @@ def readSpectrumFile(spectrum, fichero):
             spectrum.cpu.registers.SP = byteFromFile(f) | (byteFromFile(f) << 8)
             spectrum.cpu.registers.I = byteFromFile(f)
             spectrum.cpu.registers.R = byteFromFile(f) & 0x7F
-            b = byteFromFile(f)  # Bordercolor etc
-            nborder = (b & 0b00001110) > 1
-
+            b = byteFromFile(f) # Bordercolor etc
+            nborder = (b & 0b00001110) >> 1
             spectrum.cpu.registers.R = spectrum.cpu.registers.R | ((b & 0x01) << 7)
             isPacked = (b & 0b00100000) >> 5
             spectrum.cpu.registers.E = byteFromFile(f)
             spectrum.cpu.registers.D = byteFromFile(f)
             spectrum.cpu.registers.C_ = byteFromFile(f)
             spectrum.cpu.registers.B_ = byteFromFile(f)
-            spectrum.cpu.registers.D_ = byteFromFile(f)
             spectrum.cpu.registers.E_ = byteFromFile(f)
+            spectrum.cpu.registers.D_ = byteFromFile(f)
             spectrum.cpu.registers.L_ = byteFromFile(f)
             spectrum.cpu.registers.H_ = byteFromFile(f)
             spectrum.cpu.registers.A_ = byteFromFile(f)
@@ -115,32 +116,36 @@ def readSpectrumFile(spectrum, fichero):
             spectrum.cpu.registers.IFF = byteFromFile(f)
             spectrum.cpu.registers.IFF2 = byteFromFile(f)
             spectrum.cpu.registers.IM = byteFromFile(f) & 0x03
-            if spectrum.cpu.registers.PC == 0:  # Versions 2 i 3 del format
-                b = byteFromFile(f) | (byteFromFile(f) << 8)
-                spectrum.cpu.registers.PC = byteFromFile(f) | (
-                    byteFromFile(f) << 8
-                )
-                print("Hardware mode: " + str(byteFromFile(f)))
-                f.read(b - 3)  # Skip b-3 bytes
-                while sz > f.tell():
-                    lon = byteFromFile(f) | (
-                        byteFromFile(f) << 8
-                    )  # length of compressed data
-                    b = byteFromFile(f)  # page
-                    if b == 4:
-                        memFromPackedFile(f, 0x8000, lon)
-                    elif b == 5:
-                        memFromPackedFile(f, 0xC000, lon)
-                    elif b == 8:
-                        memFromPackedFile(f, 0x4000, lon)
-                    else:
-                        print("Skipping page: " + str(b))
+            if (spectrum.cpu.registers.PC == 0): # Versions 2 i 3 del format
+               b = byteFromFile(f) | (byteFromFile(f) << 8)
+               spectrum.cpu.registers.PC = byteFromFile(f) | (byteFromFile(f) << 8)
+               hwm = byteFromFile(f)
+               print('Hardware mode: '+str(hwm))
+               if (hwm < 3):
+                  io.ZXmem.set48mode()
+                  f.read(b-3) # Skip b-3 bytes
+                  while (sz > f.tell()):
+                     lon = byteFromFile(f) | (byteFromFile(f) << 8) # length of compressed data
+                     b = byteFromFile(f) # page
+                     if (b == 4): memFromPackedFile(f, 0x8000, lon)
+                     elif (b == 5): memFromPackedFile(f, 0xC000, lon)
+                     elif (b == 8): memFromPackedFile(f, 0x4000, lon)
+                     else: 
+                        print('Skipping page: '+str(b))
                         memFromPackedFile(f, 0xFFFFF, lon)
-            else:  # Versió 1 del format
-                if isPacked:
-                    memFromPackedFile(f, 16384, 49152)
-                else:
-                    memFromFile(f)
+               else:
+                  map = byteFromFile(f)
+                  f.read(b-4) # Skip b-4 bytes
+                  while (sz > f.tell()):
+                     lon = byteFromFile(f) | (byteFromFile(f) << 8) # length of compressed data
+                     b = byteFromFile(f) # page
+                     io.ZXmem.changeMap(b-3)
+                     memFromPackedFile(f, 0xC000, lon)
+                  io.ZXmem.changeMap(map)
+            else: # Versió 1 del format
+               io.ZXmem.set48mode()
+               if (isPacked): memFromPackedFile(f, 16384, 49152)
+               else: memFromFile(f)
             f.close()
 
         elif (
